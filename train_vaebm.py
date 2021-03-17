@@ -78,8 +78,7 @@ def train_vaebm(vae,ebm,dataset):
     Returns--->
         None
     """
-    
-    
+        
     vae.parameters.requires_grad = False
     ebm.parameters.requires_grad = True
     
