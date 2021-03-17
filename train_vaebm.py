@@ -44,25 +44,21 @@ def load_data(dataset):
         data_loader: torch DataLoader object for the dataset
     """
     
-    dataset = dataset.lower().replace(" ","")
+    dataset = dataset.upper().replace(" ","")
+    transform = torchvision.transforms.ToTensor()   #Define custom based on different datasets 
 
     if dataset in ['MNIST','CIFAR10','CIFAR100','CelebA','LSUN']:
         
         if dataset == 'MNIST':
-            trainset = torchvision.datasets.MNIST(root='./data', train=True,
-                                         transform=transform)
+            trainset = torchvision.datasets.MNIST(root='./data', transform=transform)
         if dataset == 'CIFAR10':
-            trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
-                                         transform=transform)
+            trainset = torchvision.datasets.CIFAR10(root='./data', transform=transform)
         if dataset == 'CIFAR100':
-            trainset = torchvision.datasets.CIFAR100(root='./data', train=True,
-                                         transform=transform)
+            trainset = torchvision.datasets.CIFAR100(root='./data', transform=transform)
         if dataset == 'CelebA':
-            trainset = torchvision.datasets.CelebA(root='./data', train=True,
-                                         transform=transform)
+            trainset = torchvision.datasets.CelebA(root='./data',transform=transform)
         if dataset == 'LSUN':
-            trainset = torchvision.datasets.LSUN(root='./data', train=True,
-                                         transform=transform)
+            trainset = torchvision.datasets.LSUN(root='./data', transform=transform)
         
 
         trainloader = torch.utils.data.DataLoader(trainset, batch_size=4,
@@ -191,6 +187,8 @@ def train_vaebm(vae,ebm,dataset):
 
 
 def main():
+    dataset = 'cifar10'
+
     model_name = 'vae'      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
     model_dir = os.path.join(RES_DIR,model_name)
 
