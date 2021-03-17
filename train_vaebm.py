@@ -4,8 +4,10 @@ import sys
 
 import torch
 import hamiltorch
+import torchvision
 from torch.optim import Adam
 from torch.utils.data import DataLoader
+
 
 import tqdm 
 import numpy as np 
@@ -14,6 +16,8 @@ import matplotlib.pyplot as plt
 from vae.disvae.training import Trainer
 from vae.disvae.utils.modelIO import load_model, load_metadata
 
+from igebm.model import IGEBM
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 RES_DIR = './vae/results/'
@@ -21,33 +25,54 @@ RES_DIR = './vae/results/'
 LD_N_STEPS = 10
 LD_STEP_SIZE = 8e-5
 
+HMC_N_STEPS = 25
+HMC_STEP_SIZE = 0.3093
+
 BATCH_SIZE = 32
 N_EPOCHS = 16
 ADAM_LR = 3e-5
 
-def load_ebm(model_dir):
-    """
-    Load the EBM model
-
-    Parameters--->
-        model_dir (str): location of model to be loaded
-
-    Returns--->
-        ebm_model (torch.nn.module): EBM model as required
-    """
-    pass
 
 def load_data(dataset):
     """
-    Load the specified dataset for training.
+    Load the specified dataset for training.                #Need to train VAE on LSUN, CIFAR10, CIFAR100
 
     Parameters--->
         dataset (str): dataset specification ("CIFAR-10", "MNIST")
 
     Returns--->
-        data_loader: torch dataloader object for the dataset
+        data_loader: torch DataLoader object for the dataset
     """
-    pass
+    
+    dataset = dataset.lower().replace(" ","")
+
+    if dataset in ['MNIST','CIFAR10','CIFAR100','CelebA','LSUN']:
+        
+        if dataset == 'MNIST':
+            trainset = torchvision.datasets.MNIST(root='./data', train=True,
+                                         transform=transform)
+        if dataset == 'CIFAR10':
+            trainset = torchvision.datasets.CIFAR10(root='./data', train=True,
+                                         transform=transform)
+        if dataset == 'CIFAR100':
+            trainset = torchvision.datasets.CIFAR100(root='./data', train=True,
+                                         transform=transform)
+        if dataset == 'CelebA':
+            trainset = torchvision.datasets.CelebA(root='./data', train=True,
+                                         transform=transform)
+        if dataset == 'LSUN':
+            trainset = torchvision.datasets.LSUN(root='./data', train=True,
+                                         transform=transform)
+        
+
+        trainloader = torch.utils.data.DataLoader(trainset, batch_size=4,
+                                          shuffle=True, num_workers=2)
+
+        return trainloader
+
+    else:
+        raise Exception('Dataset not available -- choose from MNIST, CIFAR10, CIFAR100, CelebA, LSUN')
+
 
 def langevin_sample(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling_steps=LD_N_STEPS, step_size=LD_STEP_SIZE):
     """
@@ -93,7 +118,7 @@ def langevin_sample(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling_steps=
     return epsilon
         
 
-def hamiltonian_sample(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling_steps=LD_N_STEPS):
+def hamiltonian_sample(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling_steps=HMC_N_STEPS, step_size=HMC_STEP_SIZE):
     
     """
     Not sure about this yet.    
@@ -103,9 +128,6 @@ def hamiltonian_sample(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling_ste
     epsilon = torch.randn(batch_size,latent_dim)
         
     #These constants copied from documentation
-    step_size = 0.3093
-    num_samples = 10
-    L = 25
 
     epsilon.requires_grad = True
     vae.parameters.requires_grad = False
@@ -113,8 +135,8 @@ def hamiltonian_sample(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling_ste
 
     h_prob_dist = lambda eps: torch.exp(-ebm(vae.decoder(eps))) * torch.exp(-0.5 * (torch.linalg.norm(eps,dim=1) ** 2))
 
-    epsilon_hmc = hamiltorch.sample(log_prob_func=h_prob_dist.log_prob(epsilon), params_init=epsilon, num_samples=num_samples,
-                               step_size=step_size, num_steps_per_sample=L)
+    epsilon_hmc = hamiltorch.sample(log_prob_func=h_prob_dist.log_prob(epsilon), params_init=epsilon, num_samples=latent_dim,
+                               step_size=step_size, num_steps_per_sample=sampling_steps)
     
     return epsilon_hmc
 
@@ -130,7 +152,7 @@ def train_vaebm(vae,ebm,dataset):
         dataset (torch.utils.DataLoader): dataset used for training
 
     Returns--->
-        None
+        epoch_losses (list of ints): Losses in all epochs of training
     """
 
     vae.parameters.requires_grad = False
@@ -165,16 +187,17 @@ def train_vaebm(vae,ebm,dataset):
     plt.plot(epoch+1,epoch_losses)
     plt.savefig('vaebm_training_loss.jpg')
 
+    return epoch_losses
 
 
 def main():
-    model_name = 'vae'
+    model_name = 'vae'      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
     model_dir = os.path.join(RES_DIR,model_name)
 
     vae_model = load_model(model_dir)
     vae_model.eval()
 
-    ebm_model = load_ebm(model_dir)
+    ebm_model = IGEBM()
     ebm_model.train()
 
     train_vaebm(vae_model,ebm_model,dataset)
