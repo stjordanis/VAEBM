@@ -1,13 +1,11 @@
 #Code for training VAEBM 
 import os 
-import sys
 
 import torch
 import hamiltorch
 import torchvision
 from torch.optim import Adam
 from torch.utils.data import DataLoader
-
 
 import tqdm 
 import numpy as np 
