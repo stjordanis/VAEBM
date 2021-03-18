@@ -59,8 +59,8 @@ def load_data(dataset):
             trainset = torchvision.datasets.LSUN(root='./data', transform=transform)
         
 
-        trainloader = torch.utils.data.DataLoader(trainset, batch_size=4,
-                                          shuffle=True, num_workers=2)
+        trainloader = torch.utils.data.DataLoader(trainset, batch_size=32,
+                                          shuffle=True, num_workers=1)
 
         return trainloader
 
@@ -176,9 +176,9 @@ def train_vaebm(vae,ebm,dataset):
                 latent_dim=vae.latent_dim
             )
 
-            neg_energy = ebm(vae(epsilon))
+            neg_energy = ebm(vae.decoder(epsilon))
 
-            loss = -pos_energy + neg_energy
+            loss = -pos_energy.sum() + neg_energy.sum()
             loss.backward()
             optimizer.step()
             optimizer.zero_grad()
