@@ -8,7 +8,7 @@ from tqdm import trange
 import torch
 from torch.nn import functional as F
 
-from disvae.utils.modelIO import save_model
+from vae.disvae.utils.modelIO import save_model
 
 
 TRAIN_LOSSES_LOGFILE = "train_losses.log"

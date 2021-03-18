@@ -1,3 +1,3 @@
-from disvae.models.vae import init_specific_model
-from disvae.training import Trainer
-from disvae.evaluate import Evaluator
+from vae.disvae.models.vae import init_specific_model
+from vae.disvae.training import Trainer
+from vae.disvae.evaluate import Evaluator

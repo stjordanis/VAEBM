@@ -5,7 +5,7 @@ import re
 import numpy as np
 import torch
 
-from disvae import init_specific_model
+from vae.disvae import init_specific_model
 
 MODEL_FILENAME = "model.pt"
 META_FILENAME = "specs.json"
@@ -51,7 +51,6 @@ def load_metadata(directory, filename=META_FILENAME):
         Path to folder where model is saved. For example './experiments/mnist'.
     """
     path_to_metadata = os.path.join(directory, filename)
-
     with open(path_to_metadata) as metadata_file:
         metadata = json.load(metadata_file)
 

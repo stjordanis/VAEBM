@@ -4,7 +4,7 @@ from torch import nn
 from torch.nn import functional as F
 from torch.nn import utils
 
-
+input_channel = 1
 class SpectralNorm:
     def __init__(self, name, bound=False):
         self.name = name
@@ -145,7 +145,7 @@ class IGEBM(nn.Module):
     def __init__(self, n_class=None):
         super().__init__()
 
-        self.conv1 = spectral_norm(nn.Conv2d(3, 128, 3, padding=1), std=1)
+        self.conv1 = spectral_norm(nn.Conv2d(input_channel, 128, 3, padding=1), std=1)
 
         self.blocks = nn.ModuleList(
             [

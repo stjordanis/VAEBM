@@ -7,7 +7,7 @@ import torchvision
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 
-import tqdm 
+from tqdm import tqdm 
 import numpy as np 
 import matplotlib.pyplot as plt
 
@@ -86,24 +86,27 @@ def langevin_sample(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling_steps=
     """
 
     epsilon = torch.randn(batch_size,latent_dim)
-    
+    epsilon = epsilon.to(device)
     epsilon.requires_grad = True
-    vae.parameters.requires_grad = False
-    ebm.parameters.requires_grad = False
+    for p in vae.parameters():
+        p.requires_grad = False
+    for p in ebm.parameters():
+        p.requires_grad = True
+
 
     h_prob_dist = lambda eps: torch.exp(-ebm(vae.decoder(eps))) * torch.exp(-0.5 * (torch.linalg.norm(eps,dim=1) ** 2))
 
     for _ in range(sampling_steps):
         noise = torch.randn(batch_size,latent_dim)
-        
+        noise = noise.to(device)
         prob_out = h_prob_dist(epsilon)
         prob_out.sum().backward()
 
-        epsilon.data.add_(noise,torch.sqrt(step_size))
+        epsilon.data.add_(noise*torch.sqrt(torch.tensor(step_size)))
 
         epsilon.grad.data.clamp_(-0.01,0.01)
 
-        epsilon.data.add(-step_size / 2, epsilon.grad.data)
+        epsilon.data.add(-step_size / 2 * epsilon.grad.data)
         epsilon.grad.detach_()
         epsilon.grad.zero_()
         #epsilon.data.clamp_(0, 1)
@@ -120,12 +123,15 @@ def hamiltonian_sample(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling_ste
 
     hamiltorch.set_random_seed(123)
     epsilon = torch.randn(batch_size,latent_dim)
-        
+    epsilon = epsilon.to(device)    
     #These constants copied from documentation
 
     epsilon.requires_grad = True
-    vae.parameters.requires_grad = False
-    ebm.parameters.requires_grad = False
+    for p in vae.parameters():
+        p.requires_grad = False
+    # vae.parameters().requires_grad = False
+    for p in ebm.parameters():
+        p.requires_grad = False
 
     h_prob_dist = lambda eps: torch.exp(-ebm(vae.decoder(eps))) * torch.exp(-0.5 * (torch.linalg.norm(eps,dim=1) ** 2))
 
@@ -149,17 +155,20 @@ def train_vaebm(vae,ebm,dataset):
         epoch_losses (list of ints): Losses in all epochs of training
     """
 
-    vae.parameters.requires_grad = False
-    ebm.parameters.requires_grad = True
-    
+    for p in vae.parameters():
+        p.requires_grad = False
+        
+    # vae.parameters().requires_grad = False
+    for p in ebm.parameters():
+        p.requires_grad = True
     data = load_data(dataset)
-
-    optimizer = Adam(params=ebm.parameters,lr=ADAM_LR)
-
+    optimizer = Adam(params=ebm.parameters(),lr=ADAM_LR)
+    
     for epoch in range(N_EPOCHS):
         epoch_losses=[]
-        for _,pos_image in tqdm(enumerate(data)):
-            
+        for _,(pos_image,pos_id) in tqdm(enumerate(data)):
+            # print(pos_image.shape)
+            pos_image, pos_id = pos_image.to(device), pos_id.to(device)
             pos_energy = ebm(pos_image)
 
             epsilon = langevin_sample(
@@ -184,19 +193,21 @@ def train_vaebm(vae,ebm,dataset):
     return epoch_losses
 
 
-def main():
-    dataset = 'cifar10'
+if __name__=='__main__':
+    dataset = 'mnist'
 
-    model_name = 'vae'      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
+    model_name = 'VAE_'+dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
     model_dir = os.path.join(RES_DIR,model_name)
 
     vae_model = load_model(model_dir)
+    vae_model = vae_model.to(device)
     vae_model.eval()
 
     ebm_model = IGEBM()
+    ebm_model = ebm_model.to(device)
     ebm_model.train()
 
-    train_vaebm(vae_model,ebm_model,dataset)
+    print(train_vaebm(vae_model,ebm_model,dataset.upper()))
 
 
 
