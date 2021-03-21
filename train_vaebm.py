@@ -20,7 +20,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 RES_DIR = './vae/results/'
 
-LD_N_STEPS = 10
+LD_N_STEPS = 8
 LD_STEP_SIZE = 8e-5
 
 HMC_N_STEPS = 25
@@ -92,7 +92,7 @@ def langevin_sample_manual(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling
     epsilon = torch.randn(batch_size,latent_dim,device=device,requires_grad=True)
     vae.eval()
     ebm.eval()
-
+    
     h_prob_dist = lambda eps: torch.exp(-ebm(vae.decoder(eps))) * torch.exp(-0.5 * (torch.linalg.norm(eps,dim=1) ** 2))
 
     for _ in range(sampling_steps):
@@ -108,6 +108,9 @@ def langevin_sample_manual(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling
         epsilon.grad.detach_()
         epsilon.grad.zero_()
         epsilon.data.clamp_(0, 1)
+        
+        loss = loss.detach()
+        noise = noise.detach()
 
     epsilon.requires_grad = False
     return epsilon
@@ -143,7 +146,8 @@ def langevin_sample(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling_steps=
         loss.sum().backward()
 
         optimizer.step()
-        optimizer.zero_grad(set_to_none=True)        
+        optimizer.zero_grad(set_to_none=True)
+        loss = loss.detach()     
 
     epsilon.requires_grad = False
     return epsilon
@@ -152,7 +156,13 @@ def langevin_sample(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling_steps=
 def hamiltonian_sample(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling_steps=HMC_N_STEPS, step_size=HMC_STEP_SIZE):
     
     """
-    Not sure about this yet.    
+    Uses Hamiltorch library for Hamiltonian MC sampling.
+    Parameters-->
+        vae (torch.nn.module) : VAE model used in VAEBM
+        ebm (torch.nn.module) : EBM model used in VAEBM
+        batch_size (int): batch size of data, default: 
+        latent_dim (int): latent dimension of the VAE in vae_decoder
+
     """
 
     hamiltorch.set_random_seed(123)
@@ -192,7 +202,7 @@ def train_vaebm(vae,ebm,dataset):
     
     for epoch in range(N_EPOCHS):
         epoch_losses=[]
-        for _,(pos_image,_) in tqdm(enumerate(data)):
+        for it,(pos_image,_) in tqdm(enumerate(data)):
             
             optimizer.zero_grad(set_to_none=True)
 
@@ -209,20 +219,26 @@ def train_vaebm(vae,ebm,dataset):
 
                 loss = -pos_energy.sum() + neg_energy.sum()
 
-            
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
-            #optimizer.zero_grad(set_to_none=True)
-        
-        epoch_losses.append(loss.detach())
+
+            pos_image = pos_image.detach()
+            pos_energy = pos_energy.detach()
+            neg_energy = neg_energy.detach()
+            loss = loss.detach()
+            
+            if it%50 == 0:
+                torch.cuda.empty_cache()
+            
+        #epoch_losses.append(loss.data[0])
         
         torch.save(ebm.state_dict,'model'+str(epoch)+'.ckpt')
     
-    plt.plot(epoch+1,epoch_losses)
-    plt.savefig('vaebm_training_loss.jpg')
+    #plt.plot(epoch+1,epoch_losses)
+    #plt.savefig('vaebm_training_loss.jpg')
 
-    return epoch_losses
+    return 0 #epoch_losses
 
 
 if __name__=='__main__':
