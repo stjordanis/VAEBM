@@ -157,8 +157,7 @@ def hamiltonian_sample(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling_ste
 
     hamiltorch.set_random_seed(123)
     epsilon = torch.randn(batch_size,latent_dim,device=device)
-    #These constants copied from documentation
-
+    
     epsilon.requires_grad = True
     vae.eval()
     ebm.eval()
@@ -195,7 +194,7 @@ def train_vaebm(vae,ebm,dataset):
         epoch_losses=[]
         for _,(pos_image,_) in tqdm(enumerate(data)):
             
-            optimizer.zero_grad()
+            optimizer.zero_grad(set_to_none=True)
 
             with torch.cuda.amp.autocast():
                 pos_image = pos_image.to(device)
