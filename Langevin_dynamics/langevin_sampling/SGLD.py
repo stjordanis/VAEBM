@@ -69,5 +69,5 @@ class SGLD(Optimizer):
                 noise_std = noise_std.sqrt()
                 noise = p.data.new(p.data.size()).normal_(mean=0, std=1)*noise_std
                 p.data.add_(noise)
-
+                print("Reached")
         return 1.0

@@ -20,17 +20,17 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 RES_DIR = './vae/results/'
 
-LD_N_STEPS = 5
+LD_N_STEPS = 10
 LD_STEP_SIZE = 8e-5
 
 HMC_N_STEPS = 25
 HMC_STEP_SIZE = 0.3093
 
 BATCH_SIZE = 32
-N_EPOCHS = 16
-ADAM_LR = 3e-5
+N_EPOCHS = 10
+ADAM_LR = 4e-5
 
-NUM_WORKERS = 1
+NUM_WORKERS = 0
 
 scaler = torch.cuda.amp.GradScaler()
 
@@ -89,11 +89,9 @@ def langevin_sample_manual(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling
         epsilon (torch.Tensor): epsilon sample
     """
 
-    epsilon = torch.randn(batch_size,latent_dim,device=device)
-    epsilon.requires_grad = True
+    epsilon = torch.randn(batch_size,latent_dim,device=device,requires_grad=True)
     vae.eval()
     ebm.eval()
-
 
     h_prob_dist = lambda eps: torch.exp(-ebm(vae.decoder(eps))) * torch.exp(-0.5 * (torch.linalg.norm(eps,dim=1) ** 2))
 
@@ -102,11 +100,11 @@ def langevin_sample_manual(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling
         loss = h_prob_dist(epsilon)
         loss.sum().backward()
 
-        epsilon.data.add_(noise*torch.sqrt(torch.tensor(step_size)))
+        epsilon.data.add_(noise, alpha=torch.sqrt(torch.tensor(step_size)))
 
         epsilon.grad.data.clamp_(-0.01,0.01)
 
-        epsilon.data.add(-step_size / 2 * epsilon.grad.data)
+        epsilon.data.add(epsilon.grad.data, alpha=-step_size / 2)
         epsilon.grad.detach_()
         epsilon.grad.zero_()
         epsilon.data.clamp_(0, 1)
