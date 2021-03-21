@@ -118,7 +118,7 @@ class ResBlock(nn.Module):
             weight1, weight2, bias1, bias2 = embed.chunk(4, 1)
             out = weight1 * out + bias1
 
-        out = F.leaky_relu(out, negative_slope=0.2)
+        out = F.silu(out)
 
         out = self.conv2(out)
 
@@ -136,7 +136,7 @@ class ResBlock(nn.Module):
         if self.downsample:
             out = F.avg_pool2d(out, 2)
 
-        out = F.leaky_relu(out, negative_slope=0.2)
+        out = F.silu(out)
 
         return out
 
@@ -163,7 +163,7 @@ class IGEBM(nn.Module):
     def forward(self, input, class_id=None):
         out = self.conv1(input)
 
-        out = F.leaky_relu(out, negative_slope=0.2)
+        out = F.silu(out)
 
         for block in self.blocks:
             out = block(out, class_id)

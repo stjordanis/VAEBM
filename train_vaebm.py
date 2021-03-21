@@ -13,14 +13,14 @@ import matplotlib.pyplot as plt
 
 from vae.disvae.training import Trainer
 from vae.disvae.utils.modelIO import load_model, load_metadata
-
+from Langevin_dynamics.langevin_sampling.SGLD import SGLD
 from igebm.model import IGEBM
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 RES_DIR = './vae/results/'
 
-LD_N_STEPS = 10
+LD_N_STEPS = 5
 LD_STEP_SIZE = 8e-5
 
 HMC_N_STEPS = 25
@@ -30,6 +30,9 @@ BATCH_SIZE = 32
 N_EPOCHS = 16
 ADAM_LR = 3e-5
 
+NUM_WORKERS = 1
+
+scaler = torch.cuda.amp.GradScaler()
 
 def load_data(dataset):
     """
@@ -59,8 +62,8 @@ def load_data(dataset):
             trainset = torchvision.datasets.LSUN(root='./data', transform=transform)
         
 
-        trainloader = torch.utils.data.DataLoader(trainset, batch_size=32,
-                                          shuffle=True, num_workers=1)
+        trainloader = torch.utils.data.DataLoader(trainset, batch_size=BATCH_SIZE,
+                                                shuffle=True, pin_memory=True, num_workers=NUM_WORKERS)
 
         return trainloader
 
@@ -68,6 +71,49 @@ def load_data(dataset):
         raise Exception('Dataset not available -- choose from MNIST, CIFAR10, CIFAR100, CelebA, LSUN')
 
 
+def langevin_sample_manual(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling_steps=LD_N_STEPS, step_size=LD_STEP_SIZE):
+    """
+    Sample epsilon using Langevin dynamics based MCMC, 
+    for reparametrizing negative phase sampling in EBM
+    (Self-implemented, inefficient)
+
+    Parameters--> 
+        vae (torch.nn.module) : VAE model used in VAEBM
+        ebm (torch.nn.module) : EBM model used in VAEBM
+        batch_size (int): batch size of data, default: 
+        latent_dim (int): latent dimension of the VAE in vae_decoder
+        sampling_steps (int): number of sampling steps in MCMC
+        step_size (int): step size in sampling 
+
+    Returns-->
+        epsilon (torch.Tensor): epsilon sample
+    """
+
+    epsilon = torch.randn(batch_size,latent_dim,device=device)
+    epsilon.requires_grad = True
+    vae.eval()
+    ebm.eval()
+
+
+    h_prob_dist = lambda eps: torch.exp(-ebm(vae.decoder(eps))) * torch.exp(-0.5 * (torch.linalg.norm(eps,dim=1) ** 2))
+
+    for _ in range(sampling_steps):
+        noise = torch.randn(batch_size,latent_dim,device=device)
+        loss = h_prob_dist(epsilon)
+        loss.sum().backward()
+
+        epsilon.data.add_(noise*torch.sqrt(torch.tensor(step_size)))
+
+        epsilon.grad.data.clamp_(-0.01,0.01)
+
+        epsilon.data.add(-step_size / 2 * epsilon.grad.data)
+        epsilon.grad.detach_()
+        epsilon.grad.zero_()
+        epsilon.data.clamp_(0, 1)
+
+    epsilon.requires_grad = False
+    return epsilon
+        
 def langevin_sample(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling_steps=LD_N_STEPS, step_size=LD_STEP_SIZE):
     """
     Sample epsilon using Langevin dynamics based MCMC, 
@@ -85,35 +131,25 @@ def langevin_sample(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling_steps=
         epsilon (torch.Tensor): epsilon sample
     """
 
-    epsilon = torch.randn(batch_size,latent_dim)
-    epsilon = epsilon.to(device)
+    epsilon = torch.randn(batch_size,latent_dim,device=device)
     epsilon.requires_grad = True
-    for p in vae.parameters():
-        p.requires_grad = False
-    for p in ebm.parameters():
-        p.requires_grad = True
+    vae.eval()
+    ebm.eval()
 
+    optimizer = SGLD([epsilon],lr=LD_STEP_SIZE)
 
-    h_prob_dist = lambda eps: torch.exp(-ebm(vae.decoder(eps))) * torch.exp(-0.5 * (torch.linalg.norm(eps,dim=1) ** 2))
+    h_prob_dist = lambda eps: torch.exp(-ebm(vae.decoder(eps))) * torch.exp(-0.5 * (torch.linalg.norm(eps,dim=1) ** 2).reshape(-1,1))
 
     for _ in range(sampling_steps):
-        noise = torch.randn(batch_size,latent_dim)
-        noise = noise.to(device)
-        prob_out = h_prob_dist(epsilon)
-        prob_out.sum().backward()
+        loss = -h_prob_dist(epsilon)
+        loss.sum().backward()
 
-        epsilon.data.add_(noise*torch.sqrt(torch.tensor(step_size)))
-
-        epsilon.grad.data.clamp_(-0.01,0.01)
-
-        epsilon.data.add(-step_size / 2 * epsilon.grad.data)
-        epsilon.grad.detach_()
-        epsilon.grad.zero_()
-        #epsilon.data.clamp_(0, 1)
+        optimizer.step()
+        optimizer.zero_grad(set_to_none=True)        
 
     epsilon.requires_grad = False
     return epsilon
-        
+
 
 def hamiltonian_sample(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling_steps=HMC_N_STEPS, step_size=HMC_STEP_SIZE):
     
@@ -122,16 +158,12 @@ def hamiltonian_sample(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling_ste
     """
 
     hamiltorch.set_random_seed(123)
-    epsilon = torch.randn(batch_size,latent_dim)
-    epsilon = epsilon.to(device)    
+    epsilon = torch.randn(batch_size,latent_dim,device=device)
     #These constants copied from documentation
 
     epsilon.requires_grad = True
-    for p in vae.parameters():
-        p.requires_grad = False
-    # vae.parameters().requires_grad = False
-    for p in ebm.parameters():
-        p.requires_grad = False
+    vae.eval()
+    ebm.eval()
 
     h_prob_dist = lambda eps: torch.exp(-ebm(vae.decoder(eps))) * torch.exp(-0.5 * (torch.linalg.norm(eps,dim=1) ** 2))
 
@@ -155,35 +187,38 @@ def train_vaebm(vae,ebm,dataset):
         epoch_losses (list of ints): Losses in all epochs of training
     """
 
-    for p in vae.parameters():
-        p.requires_grad = False
-        
-    # vae.parameters().requires_grad = False
-    for p in ebm.parameters():
-        p.requires_grad = True
+    vae.eval()    
+    ebm.train()
+    
     data = load_data(dataset)
     optimizer = Adam(params=ebm.parameters(),lr=ADAM_LR)
     
     for epoch in range(N_EPOCHS):
         epoch_losses=[]
-        for _,(pos_image,pos_id) in tqdm(enumerate(data)):
-            # print(pos_image.shape)
-            pos_image, pos_id = pos_image.to(device), pos_id.to(device)
-            pos_energy = ebm(pos_image)
-
-            epsilon = langevin_sample(
-                vae=vae,ebm=ebm,
-                latent_dim=vae.latent_dim
-            )
-
-            neg_energy = ebm(vae.decoder(epsilon))
-
-            loss = -pos_energy.sum() + neg_energy.sum()
-            loss.backward()
-            optimizer.step()
+        for _,(pos_image,_) in tqdm(enumerate(data)):
+            
             optimizer.zero_grad()
+
+            with torch.cuda.amp.autocast():
+                pos_image = pos_image.to(device)
+                pos_energy = ebm(pos_image)
+
+                epsilon = langevin_sample_manual(
+                    vae=vae,ebm=ebm,
+                    latent_dim=vae.latent_dim
+                )
+
+                neg_energy = ebm(vae.decoder(epsilon))
+
+                loss = -pos_energy.sum() + neg_energy.sum()
+
+            
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+            #optimizer.zero_grad(set_to_none=True)
         
-        epoch_losses.append(loss)
+        epoch_losses.append(loss.detach())
         
         torch.save(ebm.state_dict,'model'+str(epoch)+'.ckpt')
     
@@ -199,36 +234,10 @@ if __name__=='__main__':
     model_name = 'VAE_'+dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
     model_dir = os.path.join(RES_DIR,model_name)
 
-    vae_model = load_model(model_dir)
-    vae_model = vae_model.to(device)
+    vae_model = load_model(model_dir).to(device)
     vae_model.eval()
 
-    ebm_model = IGEBM()
-    ebm_model = ebm_model.to(device)
+    ebm_model = IGEBM().to(device)
     ebm_model.train()
 
-    print(train_vaebm(vae_model,ebm_model,dataset.upper()))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-    
-    
-
-
-
-
-
-
-
+    train_vaebm(vae_model,ebm_model,dataset.upper())
