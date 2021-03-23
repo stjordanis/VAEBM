@@ -71,7 +71,7 @@ def load_data(dataset):
         raise Exception('Dataset not available -- choose from MNIST, CIFAR10, CIFAR100, CelebA, LSUN')
 
 
-def langevin_sample_manual(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling_steps=LD_N_STEPS, step_size=LD_STEP_SIZE):
+def langevin_sample_epsilon(vae, ebm, latent_dim, batch_size=BATCH_SIZE, sampling_steps=LD_N_STEPS, step_size=LD_STEP_SIZE):
     """
     Sample epsilon using Langevin dynamics based MCMC, 
     for reparametrizing negative phase sampling in EBM
@@ -208,7 +208,7 @@ def train_vaebm(vae,ebm,dataset):
             with torch.cuda.amp.autocast():
                 pos_image = pos_image.to(device)
                 
-                epsilon = langevin_sample_manual(
+                epsilon = langevin_sample_epsilon(
                     vae=vae,ebm=ebm,
                     latent_dim=vae.latent_dim
                 )
