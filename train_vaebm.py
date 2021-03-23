@@ -12,7 +12,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from vae.disvae.training import Trainer
-from vae.disvae.utils.modelIO import load_model, load_metadata
+from vae.disvae.utils.modelIO import load_model
 from Langevin_dynamics.langevin_sampling.SGLD import SGLD
 from igebm.model import IGEBM
 
@@ -201,21 +201,23 @@ def train_vaebm(vae,ebm,dataset):
     optimizer = Adam(params=ebm.parameters(),lr=ADAM_LR)
     
     for epoch in range(N_EPOCHS):
-        epoch_losses=[]
-        for it,(pos_image,_) in tqdm(enumerate(data)):
-            
+        
+        for idx ,(pos_image, _) in tqdm(enumerate(data)):
             optimizer.zero_grad(set_to_none=True)
 
             with torch.cuda.amp.autocast():
                 pos_image = pos_image.to(device)
-                pos_energy = ebm(pos_image)
-
+                
                 epsilon = langevin_sample_manual(
                     vae=vae,ebm=ebm,
                     latent_dim=vae.latent_dim
                 )
 
-                neg_energy = ebm(vae.decoder(epsilon))
+                with torch.no_grad():
+                    neg_image = vae.decoder(epsilon)
+
+                pos_energy = ebm(pos_image)
+                neg_energy = ebm(neg_image)
 
                 loss = -pos_energy.sum() + neg_energy.sum()
 
@@ -223,31 +225,26 @@ def train_vaebm(vae,ebm,dataset):
             scaler.step(optimizer)
             scaler.update()
 
-            pos_image = pos_image.detach()
-            pos_energy = pos_energy.detach()
-            neg_energy = neg_energy.detach()
-            loss = loss.detach()
+            pos_image.detach_(), neg_image.detach_()
+            pos_energy.detach_(), neg_energy.detach_()
+            epsilon.detach_(), loss.detach_()
             
-            if it%50 == 0:
-                torch.cuda.empty_cache()
+            torch.cuda.empty_cache()
             
-        #epoch_losses.append(loss.data[0])
-        
-        torch.save(ebm.state_dict,'model'+str(epoch)+'.ckpt')
+        torch.save(ebm.state_dict,'./results/ebm_model'+str(epoch)+'.ckpt')
+        with open('/results/model_version.txt','w') as f:
+            f.write('model'+str(epoch)+'.ckpt')
     
-    #plt.plot(epoch+1,epoch_losses)
-    #plt.savefig('vaebm_training_loss.jpg')
-
-    return 0 #epoch_losses
+    return 0
 
 
 if __name__=='__main__':
     dataset = 'mnist'
 
-    model_name = 'VAE_'+dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
-    model_dir = os.path.join(RES_DIR,model_name)
+    vae_model_name = 'VAE_'+dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
+    vae_model_dir = os.path.join(RES_DIR,vae_model_name)
 
-    vae_model = load_model(model_dir).to(device)
+    vae_model = load_model(vae_model_dir).to(device)
     vae_model.eval()
 
     ebm_model = IGEBM().to(device)
