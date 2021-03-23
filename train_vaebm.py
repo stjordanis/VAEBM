@@ -202,7 +202,7 @@ def train_vaebm(vae,ebm,dataset):
     
     for epoch in range(N_EPOCHS):
         
-        for idx ,(pos_image, _) in tqdm(enumerate(data)):
+        for idx ,(pos_image, _) in tqdm(enumerate(data), total=len(data), leave=False):
             optimizer.zero_grad(set_to_none=True)
 
             with torch.cuda.amp.autocast():
