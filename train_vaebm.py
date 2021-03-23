@@ -1,4 +1,12 @@
 #Code for training VAEBM 
+
+#TODO : 
+#0. Baseline implementation on MNIST, CIFAR10 and CelebA
+#1. Hamiltonian sampling
+#2. EBM on (x,z) instead of only z
+
+
+
 import os 
 
 import torch
