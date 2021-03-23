@@ -37,7 +37,7 @@ def langevin_sample_image(vae, ebm, batch_size=TEST_BATCH_SIZE, sampling_steps=L
     vae.eval()
     ebm.eval()
     
-    h_prob_dist_test = lambda img: torch.exp(-ebm(img)) * 1     #How to include p_theta(img)??
+    h_prob_dist_test = lambda img: torch.exp(-ebm(img)) * torch.exp(-0.5 * (torch.linalg.norm(img-image_out,dim=1)) ** 2)    #Confirm second term
 
     for _ in range(sampling_steps):
         noise = torch.randn(batch_size,image_out.shape,device=device)
@@ -64,7 +64,7 @@ if __name__ == '__main__':
         
     with open('./results/model_version.txt','r') as f:
         ebm_model_file = f.read()
-
+    
     dataset = 'mnist'
 
     vae_model_name = 'VAE_'+dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
@@ -73,7 +73,7 @@ if __name__ == '__main__':
     vae.eval()
 
     ebm = IGEBM()
-    ebm.load_state_dict(torch.load(ebm_model_file))
+    ebm.load_state_dict(torch.load(os.path.join('./results',ebm_model_file)))
     ebm.eval()
 
     image_out = langevin_sample_image(vae, ebm)
