@@ -1,8 +1,9 @@
 import os
-
+import numpy as np
 import torch 
 import PIL 
 import matplotlib.pyplot as plt 
+import torchvision
 
 from igebm.model import IGEBM
 from vae.disvae.utils.modelIO import load_model
@@ -32,41 +33,45 @@ def langevin_sample_image(vae, ebm, batch_size=TEST_BATCH_SIZE, sampling_steps=L
     Returns-->
         image_out (torch.Tensor): image sample
     """
-
-    image_out = vae.decoder(torch.randn(batch_size,vae.latent_dim,device=device,requires_grad=True))
+    z = torch.randn(batch_size,vae.latent_dim,device=device,requires_grad=False)
+    epsilon = torch.randn(batch_size,vae.latent_dim,device=device,requires_grad=True)
+    z.detach_()
+    image_out = vae.decoder(z)
+    image_out.detach_()
+    image_out_ref = torchvision.transforms.ToPILImage()(image_out[5])
+    image_out_ref.save("geeks_ref.jpg")
     vae.eval()
     ebm.eval()
-    
-    h_prob_dist_test = lambda img: torch.exp(-ebm(img)) * torch.exp(-0.5 * (torch.linalg.norm(img-image_out,dim=1)) ** 2)    #Confirm second term
+    h_prob_dist_test = lambda epsilon: torch.exp(-ebm(vae.decoder(epsilon))) * torch.exp(-0.5 * (torch.linalg.norm(vae.decoder(epsilon)-image_out,dim=1)) ** 2)    #Confirm second term
 
     for _ in range(sampling_steps):
-        noise = torch.randn(batch_size,image_out.shape,device=device)
-        loss = h_prob_dist_test(image_out)
+        # print((batch_size,image_out.shape))
+        noise = torch.randn(epsilon.shape,device=device)
+        loss = h_prob_dist_test(epsilon)
         loss.sum().backward()
 
-        image_out.data.add_(noise, alpha=torch.sqrt(torch.tensor(step_size)))
+        epsilon.data.add_(noise, alpha=torch.sqrt(torch.tensor(step_size)))
+        epsilon.grad.data.clamp_(-0.01,0.01)
 
-        image_out.grad.data.clamp_(-0.01,0.01)
-
-        image_out.data.add(image_out.grad.data, alpha=-step_size / 2)
-        image_out.grad.detach_()
-        image_out.grad.zero_()
-        image_out.data.clamp_(0, 1)
+        epsilon.data.add(epsilon.grad.data, alpha=-step_size / 2)
+        epsilon.grad.detach_()
+        epsilon.grad.zero_()
+        epsilon.data.clamp_(0, 1)
         
         loss = loss.detach()
         noise = noise.detach()
 
-    image_out.requires_grad = False
-    return image_out
+    # image_out.requires_grad = False
+    return vae.decoder(epsilon)
 
 
 if __name__ == '__main__':
         
-    with open('./results/model_version.txt','r') as f:
-        ebm_model_file = f.read()
+    # with open('./results/model_version.txt','r') as f:
+    #     ebm_model_file = f.read()
+    ebm_model_file = 'ebm_model9.ckpt'
     
     dataset = 'mnist'
-
     vae_model_name = 'VAE_'+dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
     vae_model_dir = os.path.join(VAE_DIR,vae_model_name)
     vae = load_model(vae_model_dir).to(device)
@@ -74,6 +79,10 @@ if __name__ == '__main__':
 
     ebm = IGEBM()
     ebm.load_state_dict(torch.load(os.path.join('./results',ebm_model_file)))
+    ebm = ebm.to(device)
     ebm.eval()
 
     image_out = langevin_sample_image(vae, ebm)
+
+    image_out = torchvision.transforms.ToPILImage()(image_out[5])
+    image_out = image_out.save("geeks.jpg")
