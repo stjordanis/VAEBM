@@ -206,34 +206,32 @@ def train_vaebm(vae,ebm,dataset):
     
     for epoch in range(N_EPOCHS):
         
-        for _ ,(pos_image, _) in tqdm(enumerate(data), total=len(data), leave=False):
+        for idx ,(pos_image, _) in tqdm(enumerate(data), total=len(data), leave=False):
             optimizer.zero_grad(set_to_none=True)
 
             with torch.cuda.amp.autocast():
                 pos_image = pos_image.to(device)
                 
-                epsilon = langevin_sample_epsilon(
-                    vae=vae,ebm=ebm
-                )
-
-                with torch.no_grad():
-                    neg_image = vae.decoder(epsilon)
+                epsilon = langevin_sample_epsilon(vae=vae,ebm=ebm)
 
                 pos_energy = ebm(pos_image)
-                neg_energy = ebm(neg_image)
+                neg_energy = ebm(vae.decoder(epsilon))
 
-                loss = -pos_energy.sum() + neg_energy.sum()
+                loss = pos_energy.sum() - neg_energy.sum()
 
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
+            
+            loss = loss.detach()
+            pos_image = pos_image.detach()
+            pos_energy = pos_energy.detach()
+            neg_energy = neg_energy.detach()
 
-            pos_image.detach_(), neg_image.detach_()
-            pos_energy.detach_(), neg_energy.detach_()
-            epsilon.detach_(), loss.detach_()
-            
-            torch.cuda.empty_cache()
-            
+            if idx % 25 == 0:
+                torch.cuda.empty_cache()
+
+        epsilon.detach_()   
         torch.save(ebm.state_dict(),'./results/ebm_model'+str(epoch)+'.ckpt')
         with open('/results/model_version.txt','w') as f:
             f.write('model'+str(epoch)+'.ckpt')
