@@ -33,13 +33,11 @@ def langevin_sample_image(vae, ebm, batch_size=TEST_BATCH_SIZE, sampling_steps=L
     Returns-->
         image_out (torch.Tensor): image sample
     """
-    z = torch.randn(batch_size,vae.latent_dim,device=device,requires_grad=False)
-    epsilon = torch.randn(batch_size,vae.latent_dim,device=device,requires_grad=True)
-    z.detach_()
-    image_out = vae.decoder(z)
+    epsilon = torch.randn(batch_size, vae.latent_dim, requires_grad=True, device=device)
+    image_out = vae.decoder(epsilon)
     image_out.detach_()
-    image_out_ref = torchvision.transforms.ToPILImage()(image_out[5])
-    image_out_ref.save("geeks_ref.jpg")
+    image_out_pil = torchvision.transforms.ToPILImage()(image_out[26])
+    image_out_pil.save("initial.jpg")
     vae.eval()
     ebm.eval()
     h_prob_dist_test = lambda epsilon: torch.exp(-ebm(vae.decoder(epsilon))) * torch.exp(-0.5 * (torch.linalg.norm(vae.decoder(epsilon)-image_out,dim=1)) ** 2)    #Confirm second term
@@ -84,5 +82,5 @@ if __name__ == '__main__':
 
     image_out = langevin_sample_image(vae, ebm)
 
-    image_out = torchvision.transforms.ToPILImage()(image_out[5])
-    image_out = image_out.save("geeks.jpg")
+    image_out = torchvision.transforms.ToPILImage()(image_out[26])
+    image_out = image_out.save("final.jpg")

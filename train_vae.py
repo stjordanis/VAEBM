@@ -1,0 +1,103 @@
+import torch
+from torch.optim import Adam
+from torch.utils.data import DataLoader
+from torchvision.datasets import MNIST, CIFAR10, CelebA
+from torchvision.transforms import ToTensor,ToPILImage
+
+from tqdm import tqdm
+
+from vanilla_vae import VAE
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+DATASETS = {
+            'mnist': MNIST,
+            'cifar10': CIFAR10,
+            'celeba': CelebA
+}
+
+LATENT_DIM = {
+            'mnist': 10,
+            'cifar10': 32,
+            'celeba': 128
+}
+
+IMAGE_SHAPES = {
+            'mnist': (1,32,32),
+            'cifar10': (3,32,32),
+            'celeba': (3,64,64)
+}
+
+DATA_ROOT = './data'
+TRAIN_BATCH_SIZE = 128
+NUM_WORKERS = 2
+ADAM_LR = 5e-4
+
+N_EPOCHS = 30
+
+scaler = torch.cuda.amp.GradScaler()
+
+def get_dataloader(dataset,train):
+    if dataset not in DATASETS.keys():
+        raise Exception("Choose a valid dataset from mnist")
+
+    else:
+        data = DATASETS[dataset](root=DATA_ROOT,
+                                 train=train,
+                                 transform=ToTensor(),
+                                 download=True
+        )
+        return DataLoader(dataset=data,
+                          batch_size=TRAIN_BATCH_SIZE,
+                          shuffle=True,
+                          num_workers=NUM_WORKERS,
+                          pin_memory=True
+        )
+
+def train_vae(vae,dataset):
+    
+    data = get_dataloader(dataset,True)
+    optimizer = Adam(params=vae.parameters(),lr=ADAM_LR)
+    
+    epoch_losses = []
+
+    for epoch in tqdm(range(N_EPOCHS), total=N_EPOCHS, leave=False):
+        for idx ,(img, _) in tqdm(enumerate(data), total=len(data), leave=False):
+            epoch_loss = 0.0
+            optimizer.zero_grad(set_to_none=True)
+
+            with torch.cuda.amp.autocast():
+                img = img.to(device)
+                loss = vae.vae_loss(img)
+
+            scaler.scale(loss).backward()
+            scaler.step(optimizer)
+            scaler.update()
+
+            epoch_loss = epoch_loss + loss.item()
+
+            loss = loss.detach()
+            img = img.detach()
+            
+            if idx % 25 == 0:
+                torch.cuda.empty_cache()
+
+        epoch_losses.append(epoch_losses)
+
+        if epoch%5 == 0:
+            torch.save(vae.state_dict(),'./results/vae_model'+str(epoch // 5)+'.ckpt')
+            #with open('/results/model_version.txt','w') as f:
+            #    f.write('model'+str(epoch)+'.ckpt')
+    
+    return epoch_losses
+
+def main():
+    dataset = 'cifar10'
+
+    vae = VAE(latent_dim=LATENT_DIM[dataset],img_shape=IMAGE_SHAPES[dataset]).to(device)
+    vae.train()
+
+    train_vae(vae,dataset)
+
+if __name__=="__main__":
+    main()
