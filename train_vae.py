@@ -1,8 +1,8 @@
 import torch
 from torch.optim import Adam
 from torch.utils.data import DataLoader
-from torchvision.datasets import MNIST, CIFAR10, CelebA
-from torchvision.transforms import ToTensor,ToPILImage
+from torchvision.datasets import MNIST, CIFAR10, CelebA, FashionMNIST
+from torchvision.transforms import Compose,Resize,ToTensor,ToPILImage
 
 from tqdm import tqdm
 
@@ -13,19 +13,22 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 DATASETS = {
             'mnist': MNIST,
             'cifar10': CIFAR10,
-            'celeba': CelebA
+            'celeba': CelebA,
+            'fashion': FashionMNIST
 }
 
 LATENT_DIM = {
             'mnist': 10,
             'cifar10': 32,
-            'celeba': 128
+            'celeba': 128,
+            'fashion': 64
 }
 
 IMAGE_SHAPES = {
             'mnist': (1,32,32),
             'cifar10': (3,32,32),
-            'celeba': (3,64,64)
+            'celeba': (3,64,64),
+            'fashion': (1,28,28)
 }
 
 DATA_ROOT = './data'
@@ -33,18 +36,19 @@ TRAIN_BATCH_SIZE = 128
 NUM_WORKERS = 2
 ADAM_LR = 5e-4
 
-N_EPOCHS = 30
+N_EPOCHS = 401
 
 scaler = torch.cuda.amp.GradScaler()
 
 def get_dataloader(dataset,train):
+    transform2 = Compose([Resize((32,32)),ToTensor()])
     if dataset not in DATASETS.keys():
         raise Exception("Choose a valid dataset from mnist")
 
     else:
         data = DATASETS[dataset](root=DATA_ROOT,
                                  train=train,
-                                 transform=ToTensor(),
+                                 transform=transform2,
                                  download=True
         )
         return DataLoader(dataset=data,
@@ -61,7 +65,7 @@ def train_vae(vae,dataset):
     
     epoch_losses = []
 
-    for epoch in tqdm(range(N_EPOCHS), total=N_EPOCHS, leave=False):
+    for epoch in range(N_EPOCHS):
         for idx ,(img, _) in tqdm(enumerate(data), total=len(data), leave=False):
             epoch_loss = 0.0
             optimizer.zero_grad(set_to_none=True)
@@ -84,15 +88,15 @@ def train_vae(vae,dataset):
 
         epoch_losses.append(epoch_losses)
 
-        if epoch%5 == 0:
-            torch.save(vae.state_dict(),'./results/vae_model'+str(epoch // 5)+'.ckpt')
+        if epoch%50 == 0:
+            torch.save(vae.state_dict(),'./results/vae_model'+str(epoch // 50)+'.ckpt')
             #with open('/results/model_version.txt','w') as f:
             #    f.write('model'+str(epoch)+'.ckpt')
     
     return epoch_losses
 
 def main():
-    dataset = 'cifar10'
+    dataset = 'fashion'
 
     vae = VAE(latent_dim=LATENT_DIM[dataset],img_shape=IMAGE_SHAPES[dataset]).to(device)
     vae.train()
