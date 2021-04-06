@@ -192,7 +192,7 @@ class VAE(nn.Module):
 
         self.latent_dim = latent_dim
         self.img_shape = img_shape
-        self.beta = 1.0
+        self.beta = 4.0
 
         self.encoder = Encoder(self.latent_dim,self.img_shape)
         self.decoder = Decoder(self.latent_dim,self.img_shape)
@@ -237,12 +237,5 @@ class VAE(nn.Module):
 
         kl_div_loss = torch.mean(-0.5 * torch.sum(1 + logvar - mean ** 2 - logvar.exp(), dim = 1), dim = 0)
 
-        loss = recon_loss + self.beta * kl_div_loss
+        loss = self.beta * recon_loss + kl_div_loss
         return loss
-
-
-
-
-
-    
-    
