@@ -41,14 +41,14 @@ N_EPOCHS = 401
 scaler = torch.cuda.amp.GradScaler()
 
 def get_dataloader(dataset,train):
-    transform2 = Compose([Resize((32,32)),ToTensor()])
+    transform = Compose([Resize((32,32)),ToTensor()])
+    
     if dataset not in DATASETS.keys():
         raise Exception("Choose a valid dataset from mnist")
-
     else:
         data = DATASETS[dataset](root=DATA_ROOT,
                                  train=train,
-                                 transform=transform2,
+                                 transform=transform,
                                  download=True
         )
         return DataLoader(dataset=data,
@@ -94,11 +94,6 @@ def train_vae(vae,dataset):
         if epoch % 50 == 0:
             torch.save(vae.state_dict(),'./results/vae_model'+str(epoch // 5)+'.ckpt')
 
-        if epoch%50 == 0:
-            torch.save(vae.state_dict(),'./results/vae_model'+str(epoch // 50)+'.ckpt')
-            #with open('/results/model_version.txt','w') as f:
-            #    f.write('model'+str(epoch)+'.ckpt')
-    
     return epoch_losses
 
 def main():

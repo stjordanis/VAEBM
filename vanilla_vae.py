@@ -202,11 +202,8 @@ class VAE(nn.Module):
         std = torch.exp(0.5 * logvar)
         eps = torch.randn_like(std,device=device)
 
-        #if self.train == True:
         return mean + std * eps
 
-        #else:
-            #return mean
 
     def sample(self):
         z = torch.randn(self.img_shape[0],self.latent_dim,device=device)
@@ -224,20 +221,9 @@ class VAE(nn.Module):
         recon_loss = mse_loss(reconstructed,x)
         
         mean, logvar = self.encoder(x)
-        #cov = torch.diag(torch.exp(logvar))
-        #print(cov.shape)
-        #exit()
-
-        #zeros = torch.zeros_like(mean)
-        #identity = torch.diag(torch.ones_like(logvar))
-
-        """kl_div_loss = kl_divergence(
-            MultivariateNormal(mean,cov),
-            MultivariateNormal(zeros,identity)
-        )"""
 
         latent_kl = 0.5 * (-1 - logvar + mean.pow(2) + logvar.exp()).mean(dim=0)
         total_kl = latent_kl.sum()
 
         loss = self.beta_recon * recon_loss + self.beta_kl * total_kl
-    return loss
+        return loss
