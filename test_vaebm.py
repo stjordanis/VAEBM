@@ -4,9 +4,10 @@ import torch
 import PIL 
 import matplotlib.pyplot as plt 
 import torchvision
+from torchvision.datasets import MNIST, CIFAR10, CelebA, FashionMNIST
 
 from igebm.model import IGEBM
-from vae.disvae.utils.modelIO import load_model
+from vanilla_vae import VAE
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -36,7 +37,7 @@ def langevin_sample_image(vae, ebm, batch_size=TEST_BATCH_SIZE, sampling_steps=L
     epsilon = torch.randn(batch_size, vae.latent_dim, requires_grad=True, device=device)
     image_out = vae.decoder(epsilon)
     image_out.detach_()
-    image_out_pil = torchvision.transforms.ToPILImage()(image_out[26])
+    image_out_pil = torchvision.transforms.ToPILImage()(image_out[13])
     image_out_pil.save("initial.jpg")
     vae.eval()
     ebm.eval()
@@ -62,25 +63,44 @@ def langevin_sample_image(vae, ebm, batch_size=TEST_BATCH_SIZE, sampling_steps=L
     # image_out.requires_grad = False
     return vae.decoder(epsilon)
 
+DATASETS = {
+            'mnist': MNIST,
+            'cifar10': CIFAR10,
+            'celeba': CelebA,
+            'fashion': FashionMNIST
+}
+
+LATENT_DIM = {
+            'mnist': 10,
+            'cifar10': 64,
+            'celeba': 128,
+            'fashion': 64
+}
+
+IMAGE_SHAPES = {
+            'mnist': (1,32,32),
+            'cifar10': (3,32,32),
+            'celeba': (3,64,64),
+            'fashion': (1,28,28)
+}
 
 if __name__ == '__main__':
         
-    # with open('./results/model_version.txt','r') as f:
-    #     ebm_model_file = f.read()
-    ebm_model_file = 'ebm_model9.ckpt'
+    ebm_model_file = 'ebm_model8.ckpt'
     
-    dataset = 'mnist'
-    vae_model_name = 'VAE_'+dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
-    vae_model_dir = os.path.join(VAE_DIR,vae_model_name)
-    vae = load_model(vae_model_dir).to(device)
+    dataset = 'fashion'
+    vae_model_file = 'vae_model8.ckpt'      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
+    vae = VAE(latent_dim=LATENT_DIM[dataset],img_shape=IMAGE_SHAPES[dataset])
+    vae.load_state_dict(torch.load(os.path.join('./drive/MyDrive/fashion/results',vae_model_file)))
+    vae = vae.to(device)
     vae.eval()
 
     ebm = IGEBM()
-    ebm.load_state_dict(torch.load(os.path.join('./results',ebm_model_file)))
+    ebm.load_state_dict(torch.load(os.path.join('./drive/MyDrive/fashion/results2',ebm_model_file)))
     ebm = ebm.to(device)
     ebm.eval()
 
     image_out = langevin_sample_image(vae, ebm)
 
-    image_out = torchvision.transforms.ToPILImage()(image_out[26])
+    image_out = torchvision.transforms.ToPILImage()(image_out[13])
     image_out = image_out.save("final.jpg")
