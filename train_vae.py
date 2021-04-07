@@ -1,15 +1,9 @@
 import torch
 from torch.optim import Adam
 from torch.utils.data import DataLoader
-<<<<<<< HEAD
-from torchvision.datasets import MNIST, CIFAR10, CelebA
-from torchvision.transforms import ToTensor,ToPILImage
 import matplotlib.pyplot as plt
-=======
 from torchvision.datasets import MNIST, CIFAR10, CelebA, FashionMNIST
 from torchvision.transforms import Compose,Resize,ToTensor,ToPILImage
->>>>>>> 07bbcf374846d5594e166185eee485627ff900c6
-
 from tqdm import tqdm
 
 from vanilla_vae import VAE
@@ -25,14 +19,9 @@ DATASETS = {
 
 LATENT_DIM = {
             'mnist': 10,
-<<<<<<< HEAD
             'cifar10': 64,
             'celeba': 128
-=======
-            'cifar10': 32,
-            'celeba': 128,
             'fashion': 64
->>>>>>> 07bbcf374846d5594e166185eee485627ff900c6
 }
 
 IMAGE_SHAPES = {
@@ -98,18 +87,15 @@ def train_vae(vae,dataset):
                 torch.cuda.empty_cache()
 
         epoch_losses.append(epoch_losses)
-<<<<<<< HEAD
-        
+
         plt.plot(epoch_losses)
         plt.savefig("VAE_loss_epoch_"+str(epoch)+".png")
         
         if epoch % 50 == 0:
             torch.save(vae.state_dict(),'./results/vae_model'+str(epoch // 5)+'.ckpt')
-=======
 
         if epoch%50 == 0:
             torch.save(vae.state_dict(),'./results/vae_model'+str(epoch // 50)+'.ckpt')
->>>>>>> 07bbcf374846d5594e166185eee485627ff900c6
             #with open('/results/model_version.txt','w') as f:
             #    f.write('model'+str(epoch)+'.ckpt')
     

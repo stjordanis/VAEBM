@@ -192,13 +192,9 @@ class VAE(nn.Module):
 
         self.latent_dim = latent_dim
         self.img_shape = img_shape
-<<<<<<< HEAD
         self.beta_recon = 1e-6
         self.beta_kl = 0.5
-=======
-        self.beta = 4.0
->>>>>>> 07bbcf374846d5594e166185eee485627ff900c6
-
+    
         self.encoder = Encoder(self.latent_dim,self.img_shape)
         self.decoder = Decoder(self.latent_dim,self.img_shape)
 
@@ -243,9 +239,5 @@ class VAE(nn.Module):
         latent_kl = 0.5 * (-1 - logvar + mean.pow(2) + logvar.exp()).mean(dim=0)
         total_kl = latent_kl.sum()
 
-<<<<<<< HEAD
         loss = self.beta_recon * recon_loss + self.beta_kl * total_kl
-=======
-        loss = self.beta * recon_loss + kl_div_loss
->>>>>>> 07bbcf374846d5594e166185eee485627ff900c6
-        return loss
+    return loss
