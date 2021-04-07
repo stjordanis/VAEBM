@@ -20,7 +20,7 @@ DATASETS = {
 LATENT_DIM = {
             'mnist': 10,
             'cifar10': 64,
-            'celeba': 128
+            'celeba': 128,
             'fashion': 64
 }
 
