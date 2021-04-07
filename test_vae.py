@@ -32,22 +32,22 @@ IMAGE_SHAPES = {
 }
 
 DATA_ROOT = './data'
-TEST_BATCH_SIZE = 128
+TEST_BATCH_SIZE = 32
 NUM_WORKERS = 2
 
 def main():
     dataset = 'fashion'
 
-    vae_model_file = 'vae_model8.ckpt'
+    vae_model_file = 'vae_model6.ckpt'
 
     vae = VAE(latent_dim=LATENT_DIM[dataset],img_shape=IMAGE_SHAPES[dataset])
-    vae.load_state_dict(torch.load(os.path.join('./drive/Mydrive/fashion/result',vae_model_file)))
+    vae.load_state_dict(torch.load(os.path.join('./drive/MyDrive/fashion/results',vae_model_file)))
     vae = vae.to(device)
     vae.eval()
     for i in range(4):
         epsilon = torch.randn(TEST_BATCH_SIZE,vae.latent_dim,device=device)
         initial = vae.decoder(epsilon)
-        image_out = torchvision.transforms.ToPILImage()(initial[26])
+        image_out = ToPILImage()(initial[26])
         image_out = image_out.save("initial" + str(i) + ".jpg")
     
 
