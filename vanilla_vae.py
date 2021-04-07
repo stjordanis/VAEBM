@@ -192,7 +192,8 @@ class VAE(nn.Module):
 
         self.latent_dim = latent_dim
         self.img_shape = img_shape
-        self.beta = 1.0
+        self.beta_recon = 1e-6
+        self.beta_kl = 0.5
 
         self.encoder = Encoder(self.latent_dim,self.img_shape)
         self.decoder = Decoder(self.latent_dim,self.img_shape)
@@ -235,9 +236,10 @@ class VAE(nn.Module):
             MultivariateNormal(zeros,identity)
         )"""
 
-        kl_div_loss = torch.mean(-0.5 * torch.sum(1 + logvar - mean ** 2 - logvar.exp(), dim = 1), dim = 0)
+        latent_kl = 0.5 * (-1 - logvar + mean.pow(2) + logvar.exp()).mean(dim=0)
+        total_kl = latent_kl.sum()
 
-        loss = recon_loss + self.beta * kl_div_loss
+        loss = self.beta_recon * recon_loss + self.beta_kl * total_kl
         return loss
 
 
