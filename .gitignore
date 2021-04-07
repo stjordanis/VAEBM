@@ -1,2 +1,4 @@
 results/model0.ckpt
 results/model_version.txt
+*.jpg
+*.ckpt
