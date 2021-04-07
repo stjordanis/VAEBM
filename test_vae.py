@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from torchvision.datasets import MNIST, CIFAR10, CelebA, FashionMNIST
 from torchvision.transforms import Compose,Resize,ToTensor,ToPILImage
 from tqdm import tqdm
-
+import os
 from vanilla_vae import VAE
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -32,21 +32,20 @@ IMAGE_SHAPES = {
 }
 
 DATA_ROOT = './data'
-TRAIN_BATCH_SIZE = 128
+TEST_BATCH_SIZE = 128
 NUM_WORKERS = 2
-ADAM_LR = 5e-4
-
-N_EPOCHS = 401
-
-scaler = torch.cuda.amp.GradScaler()
 
 def main():
     dataset = 'fashion'
 
-    vae = VAE(latent_dim=LATENT_DIM[dataset],img_shape=IMAGE_SHAPES[dataset]).to(device)
+    vae_model_file = 'vae_model8.ckpt'
+
+    vae = VAE(latent_dim=LATENT_DIM[dataset],img_shape=IMAGE_SHAPES[dataset])
+    vae.load_state_dict(torch.load(os.path.join('./drive/Mydrive/fashion/result',vae_model_file)))
+    vae = vae.to(device)
     vae.eval()
     for i in range(4):
-        epsilon = torch.randn(batch_size,vae.latent_dim,device=device)
+        epsilon = torch.randn(TEST_BATCH_SIZE,vae.latent_dim,device=device)
         initial = vae.decoder(epsilon)
         image_out = torchvision.transforms.ToPILImage()(initial[26])
         image_out = image_out.save("initial" + str(i) + ".jpg")
@@ -54,35 +53,3 @@ def main():
 
 if __name__=="__main__":
     main()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
