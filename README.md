@@ -6,4 +6,3 @@ Based on the ICLR 2021 paper *VAEBM: A Symbiosis between Variational Autoencoder
 
 Code for IGEBM from https://github.com/rosinality/igebm-pytorch
 
-Code for VAEs from https://github.com/YannDubs/disentangling-vae
