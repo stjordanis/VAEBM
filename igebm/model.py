@@ -103,7 +103,7 @@ class ResBlock(nn.Module):
 
         if in_channel != out_channel or downsample:
             self.skip = nn.Sequential(
-                nn.Conv2d(in_channel, out_channel, 1, bias=False)
+                weight_norm(nn.Conv2d(in_channel, out_channel, 1, bias=False))
             )
 
         self.downsample = downsample
