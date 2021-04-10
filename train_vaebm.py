@@ -201,7 +201,7 @@ def train_vaebm(vae,ebm,dataset):
     vae.eval()    
     ebm.train()
        
-    alpha_e = 0.0
+    alpha_e = 1.0
     alpha_n = 0.05
     
     data = load_data(dataset)
