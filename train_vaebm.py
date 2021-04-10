@@ -200,6 +200,9 @@ def train_vaebm(vae,ebm,dataset):
 
     vae.eval()    
     ebm.train()
+       
+    alpha_e = 0.0
+    alpha_n = 0.05
     
     data = load_data(dataset)
     optimizer = Adam(params=ebm.parameters(),lr=ADAM_LR)
@@ -216,9 +219,12 @@ def train_vaebm(vae,ebm,dataset):
 
                 pos_energy = ebm(pos_image)
                 neg_energy = ebm(vae.decoder(epsilon))
-
-                loss = pos_energy.sum() - neg_energy.sum()
-
+                
+                energy_loss = pos_energy.sum() - neg_energy.sum()
+                energy_reg = (pos_energy ** 2 + neg_energy ** 2)
+                norm_reg = ebm.norm_loss()
+                loss = energy_loss + alpha_e * energy_reg + alpha_n * norm_reg
+            
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
