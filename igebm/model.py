@@ -145,10 +145,9 @@ class IGEBM(nn.Module):
     def __init__(self, n_class=None, dataset='mnist'):
         super().__init__()
         self.dataset = dataset
-        
     
     if self.dataset == 'celeba':
-        self.conv1 = spectral_norm(nn.Conv2d(input_channel, 64, 3, padding=1), std=1)
+        self.conv1 = spectral_norm(nn.Conv2d(3, 64, 3, padding=1), std=1)
         self.blocks = nn.ModuleList(
             [
                 ResBlock(64, 64, n_class, downsample=True),
@@ -164,7 +163,7 @@ class IGEBM(nn.Module):
         self.linear = nn.Linear(256, 1)
     
     else:
-        self.conv1 = spectral_norm(nn.Conv2d(input_channel, 128, 3, padding=1), std=1)
+        self.conv1 = spectral_norm(nn.Conv2d(3, 128, 3, padding=1), std=1)
         self.blocks = nn.ModuleList(
             [
                 ResBlock(128, 128, n_class, downsample=True),
@@ -175,22 +174,20 @@ class IGEBM(nn.Module):
                 ResBlock(256, 256, n_class),
             ]
         )
-
         self.linear = nn.Linear(256, 1)
 
     def forward(self, input, class_id=None):
         out = self.conv1(input)
-
         out = F.silu(out)
 
         for block in self.blocks:
             out = block(out, class_id)
 
-        out = F.relu(out)
+        out = F.silu(out)
         out = out.view(out.shape[0], out.shape[1], -1).sum(2)
         out = self.linear(out)
 
-        return out
+        return out.squeeze(1)
     
     def norm_loss(self):
         loss = 0
