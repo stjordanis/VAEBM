@@ -95,7 +95,7 @@ def train_vae(vae,dataset):
         plt.savefig("VAE_loss_epoch_"+str(epoch)+".png")
         
         if epoch % 50 == 0:
-            torch.save(vae.state_dict(),'./results/vae_model'+str(epoch // 50)+'.ckpt')
+            torch.save(vae.state_dict(),'./results/vae_model_'+str(dataset)+"_"+str(epoch // 50)+'.ckpt')
 
     return epoch_losses
 
