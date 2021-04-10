@@ -70,25 +70,22 @@ class ResBlock(nn.Module):
     def __init__(self, in_channel, out_channel, n_class=None, downsample=False):
         super().__init__()
 
-        self.conv1 = spectral_norm(
-            nn.Conv2d(
+        self.conv1 = nn.Conv2d(
                 in_channel,
                 out_channel,
                 3,
                 padding=1,
                 bias=False if n_class is not None else True,
             )
-        )
 
-        self.conv2 = spectral_norm(
-            nn.Conv2d(
+        self.conv2 = nn.Conv2d(
                 out_channel,
                 out_channel,
                 3,
                 padding=1,
                 bias=False if n_class is not None else True,
-            ), std=1e-10, bound=True
-        )
+            )
+        
 
         self.class_embed = None
 
@@ -103,7 +100,7 @@ class ResBlock(nn.Module):
 
         if in_channel != out_channel or downsample:
             self.skip = nn.Sequential(
-                spectral_norm(nn.Conv2d(in_channel, out_channel, 1, bias=False))
+                nn.Conv2d(in_channel, out_channel, 1, bias=False)
             )
 
         self.downsample = downsample
@@ -147,7 +144,7 @@ class IGEBM(nn.Module):
         self.dataset = dataset
     
     if self.dataset == 'celeba':
-        self.conv1 = spectral_norm(nn.Conv2d(3, 64, 3, padding=1), std=1)
+        self.conv1 = nn.Conv2d(3, 64, 3, padding=1)
         self.blocks = nn.ModuleList(
             [
                 ResBlock(64, 64, n_class, downsample=True),
@@ -163,7 +160,7 @@ class IGEBM(nn.Module):
         self.linear = nn.Linear(256, 1)
     
     else:
-        self.conv1 = spectral_norm(nn.Conv2d(3, 128, 3, padding=1), std=1)
+        self.conv1 = nn.Conv2d(3, 128, 3, padding=1)
         self.blocks = nn.ModuleList(
             [
                 ResBlock(128, 128, n_class, downsample=True),
