@@ -201,8 +201,8 @@ def train_vaebm(vae,ebm,dataset):
     vae.eval()    
     ebm.train()
        
-    alpha_e = 1.0
-    alpha_n = 0.05
+    alpha_e = 0.0
+    alpha_n = 0.2
     
     data = load_data(dataset)
     optimizer = Adam(params=ebm.parameters(),lr=ADAM_LR)
