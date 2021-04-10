@@ -4,7 +4,7 @@ from torch import nn
 from torch.nn import functional as F
 from torch.nn import utils
 
-input_channel = 1
+
 class SpectralNorm:
     def __init__(self, name, bound=False):
         self.name = name
@@ -142,11 +142,29 @@ class ResBlock(nn.Module):
 
 
 class IGEBM(nn.Module):
-    def __init__(self, n_class=None):
+    def __init__(self, n_class=None, dataset='mnist'):
         super().__init__()
-
+        self.dataset = dataset
+        
+    
+    if self.dataset == 'celeba':
+        self.conv1 = spectral_norm(nn.Conv2d(input_channel, 64, 3, padding=1), std=1)
+        self.blocks = nn.ModuleList(
+            [
+                ResBlock(64, 64, n_class, downsample=True),
+                ResBlock(64, 64, n_class),
+                ResBlock(128, 128, n_class, downsample=True),
+                ResBlock(128, 128, n_class),
+                ResBlock(128, 128, n_class, downsample=True),
+                ResBlock(128, 256, n_class),
+                ResBlock(256, 256, n_class, downsample=True),
+                ResBlock(256, 256, n_class),
+            ]
+        )
+        self.linear = nn.Linear(256, 1)
+    
+    else:
         self.conv1 = spectral_norm(nn.Conv2d(input_channel, 128, 3, padding=1), std=1)
-
         self.blocks = nn.ModuleList(
             [
                 ResBlock(128, 128, n_class, downsample=True),
