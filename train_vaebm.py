@@ -192,7 +192,7 @@ def train_vaebm(vae,ebm,dataset):
     Parameters--->
         vae (torch.nn.module): VAE model used in the VAEBM
         ebm (torch.nn.module): EBM model used in the VAEBM
-        dataset (torch.utils.DataLoader): dataset used for training
+        dataset (str): dataset used for training
 
     Returns--->
         epoch_losses (list of ints): Losses in all epochs of training
@@ -238,9 +238,9 @@ def train_vaebm(vae,ebm,dataset):
                 torch.cuda.empty_cache()
 
         epsilon.detach_()   
-        torch.save(ebm.state_dict(),'./results/ebm_model'+str(epoch)+'.ckpt')
-        with open('/results/model_version.txt','w') as f:
-            f.write('model'+str(epoch)+'.ckpt')
+        torch.save(ebm.state_dict(),'./results/ebm_model_'+str(dataset)+"_"+str(epoch)+'.ckpt')
+#         with open('/results/model_version.txt','w') as f:
+#             f.write('model'+str(epoch)+'.ckpt')
     
     return 0
 
