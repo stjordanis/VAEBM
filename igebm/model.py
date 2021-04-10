@@ -173,4 +173,9 @@ class IGEBM(nn.Module):
         out = self.linear(out)
 
         return out
-
+    
+    def norm_loss(self):
+        loss = 0
+        for l in self.all_conv_layers:
+            loss += l.get_spectral_norm()
+        return loss
