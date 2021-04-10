@@ -64,7 +64,10 @@ def train_vae(vae,dataset):
     optimizer = Adam(params=vae.parameters(),lr=ADAM_LR)
     
     epoch_losses = []
-
+    
+    if continued_training:
+        vae.load_state_dict(torch.load("./results/vae_model_mnist_5.ckpt")
+     
     for epoch in range(N_EPOCHS):
         for idx ,(img, _) in tqdm(enumerate(data), total=len(data), leave=False):
             epoch_loss = 0.0
