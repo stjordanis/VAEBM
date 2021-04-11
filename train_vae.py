@@ -64,9 +64,9 @@ def train_vae(vae,dataset):
     optimizer = Adam(params=vae.parameters(),lr=ADAM_LR)
     
     epoch_losses = []
-    
+    continued_training = False
     if continued_training:
-        vae.load_state_dict(torch.load("./results/vae_model_mnist_5.ckpt")
+        vae.load_state_dict(torch.load("./results/vae_model_mnist_5.ckpt"))
      
     for epoch in range(N_EPOCHS):
         for idx ,(img, _) in tqdm(enumerate(data), total=len(data), leave=False):
@@ -100,7 +100,7 @@ def train_vae(vae,dataset):
     return epoch_losses
 
 def main():
-    dataset = 'fashion'
+    dataset = 'celeba'
 
     vae = VAE(latent_dim=LATENT_DIM[dataset],img_shape=IMAGE_SHAPES[dataset]).to(device)
     vae.train()
