@@ -8,6 +8,7 @@ from tqdm import tqdm
 
 from vanilla_vae import VAE
 
+torch.set_printoptions(threshold=100000000)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 DATASETS = {
@@ -72,7 +73,6 @@ def train_vae(vae,dataset):
         for idx ,(img, _) in tqdm(enumerate(data), total=len(data), leave=False):
             epoch_loss = 0.0
             optimizer.zero_grad(set_to_none=True)
-
             with torch.cuda.amp.autocast():
                 img = img.to(device)
                 loss = vae.vae_loss(img)
@@ -100,7 +100,7 @@ def train_vae(vae,dataset):
     return epoch_losses
 
 def main():
-    dataset = 'celeba'
+    dataset = 'mnist'
 
     vae = VAE(latent_dim=LATENT_DIM[dataset],img_shape=IMAGE_SHAPES[dataset]).to(device)
     vae.train()

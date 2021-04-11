@@ -7,6 +7,7 @@ from torch.distributions import MultivariateNormal
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+
 class Encoder(nn.Module):
     def __init__(self,latent_dim,img_shape):
         super(Encoder,self).__init__()
@@ -187,14 +188,15 @@ class Decoder(nn.Module):
         return x_out
 
 class VAE(nn.Module):
-    def __init__(self, latent_dim, img_shape, batch_size):
+    def __init__(self, latent_dim, img_shape, batch_size, is_train=True):
         super(VAE,self).__init__()
 
         self.latent_dim = latent_dim
         self.img_shape = img_shape
         self.beta_kl = 0.5
         self.batch_size=batch_size
-    
+        self.is_train = is_train
+
         self.encoder = Encoder(self.latent_dim,self.img_shape)
         self.decoder = Decoder(self.latent_dim,self.img_shape)
 
@@ -218,12 +220,12 @@ class VAE(nn.Module):
 
     def vae_loss(self,x):
         reconstructed = self.forward(x)[1]
-        recon_loss = binary_cross_entropy(reconstructed,x)
+        recon_loss = mse_loss(reconstructed,x)
         
         mean, logvar = self.encoder(x)
 
         latent_kl = 0.5 * (-1 - logvar + mean.pow(2) + logvar.exp()).mean(dim=0)
         total_kl = latent_kl.sum()
-
+        
         loss = (recon_loss / self.batch_size) + self.beta_kl * total_kl
         return loss
