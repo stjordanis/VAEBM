@@ -1,7 +1,7 @@
 import torch 
 import torchvision
 import torch.nn as nn
-from torch.nn.functional import mse_loss
+from torch.nn.functional import mse_loss, binary_cross_entropy
 from torch.distributions.kl import kl_divergence
 from torch.distributions import MultivariateNormal
 
@@ -218,7 +218,7 @@ class VAE(nn.Module):
 
     def vae_loss(self,x):
         reconstructed = self.forward(x)[1]
-        recon_loss = mse_loss(reconstructed,x)
+        recon_loss = binary_cross_entropy(reconstructed,x)
         
         mean, logvar = self.encoder(x)
 
