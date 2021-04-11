@@ -175,10 +175,10 @@ class IGEBM(nn.Module):
             )
             self.linear = nn.Linear(256, 1)
 
-            self.all_conv_layers = []
-            for n, layer in self.named_modules():
-                if isinstance(layer, Conv2D):
-                    self.all_conv_layers.append(layer)
+            # self.all_conv_layers = []
+            # for n, layer in self.named_modules():
+            #     if isinstance(layer, Conv2D):
+            #         self.all_conv_layers.append(layer)
 
     def forward(self, input, class_id=None):
         out = self.conv1(input)
