@@ -2,8 +2,8 @@ import torch
 
 from torch import nn
 from torch.nn import functional as F
-from torch.nn import utils
-INPUT_CHANNEL=1
+from torch.nn.utils import weight_norm
+
 class SpectralNorm:
     def __init__(self, name, bound=False):
         self.name = name
@@ -69,24 +69,24 @@ class ResBlock(nn.Module):
     def __init__(self, in_channel, out_channel, n_class=None, downsample=False):
         super().__init__()
 
-        self.conv1 = spectral_norm(
+        self.conv1 = weight_norm(
             nn.Conv2d(
                 in_channel,
                 out_channel,
                 3,
                 padding=1,
                 bias=False if n_class is not None else True,
-            )
+            ), 'weight'
         )
 
-        self.conv2 = spectral_norm(
+        self.conv2 = weight_norm(
             nn.Conv2d(
                 out_channel,
                 out_channel,
                 3,
                 padding=1,
                 bias=False if n_class is not None else True,
-            )
+            ),'weight'
         )
 
         self.class_embed = None
@@ -102,7 +102,7 @@ class ResBlock(nn.Module):
 
         if in_channel != out_channel or downsample:
             self.skip = nn.Sequential(
-                spectral_norm(nn.Conv2d(in_channel, out_channel, 1, bias=False))
+                weight_norm(nn.Conv2d(in_channel, out_channel, 1, bias=False),'weight')
             )
 
         self.downsample = downsample
@@ -118,7 +118,6 @@ class ResBlock(nn.Module):
             out = weight1 * out + bias1
 
         out = F.silu(out)
-
         out = self.conv2(out)
 
         if self.class_embed is not None:
@@ -126,7 +125,6 @@ class ResBlock(nn.Module):
 
         if self.skip is not None:
             skip = self.skip(input)
-
         else:
             skip = input
 
@@ -141,39 +139,46 @@ class ResBlock(nn.Module):
 
 
 class IGEBM(nn.Module):
-    def __init__(self, n_class=None, dataset='mnist'):
+    def __init__(self, n_class=None, dataset='mnist', in_channels=1):
         super().__init__()
         self.dataset = dataset
+        self.in_channels = in_channels
+        if self.dataset == 'celeba':
+            
+            self.conv1 = weight_norm(nn.Conv2d(3, 64, 3, padding=1),'weight')
+            self.blocks = nn.ModuleList(
+                [
+                    ResBlock(64, 64, n_class, downsample=True),
+                    ResBlock(64, 64, n_class),
+                    ResBlock(128, 128, n_class, downsample=True),
+                    ResBlock(128, 128, n_class),
+                    ResBlock(128, 128, n_class, downsample=True),
+                    ResBlock(128, 256, n_class),
+                    ResBlock(256, 256, n_class, downsample=True),
+                    ResBlock(256, 256, n_class),
+                ]
+            )
+            self.linear = nn.Linear(256, 1)
     
-    # if self.dataset == 'celeba':
-    #     self.conv1 = spectral_norm(nn.Conv2d(3, 64, 3, padding=1))
-    #     self.blocks = nn.ModuleList(
-    #         [
-    #             ResBlock(64, 64, n_class, downsample=True),
-    #             ResBlock(64, 64, n_class),
-    #             ResBlock(128, 128, n_class, downsample=True),
-    #             ResBlock(128, 128, n_class),
-    #             ResBlock(128, 128, n_class, downsample=True),
-    #             ResBlock(128, 256, n_class),
-    #             ResBlock(256, 256, n_class, downsample=True),
-    #             ResBlock(256, 256, n_class),
-    #         ]
-    #     )
-    #     self.linear = nn.Linear(256, 1)
-    
-    # else:
-        self.conv1 = spectral_norm(nn.Conv2d(INPUT_CHANNEL, 128, 3, padding=1))
-        self.blocks = nn.ModuleList(
-            [
-                ResBlock(128, 128, n_class, downsample=True),
-                ResBlock(128, 128, n_class),
-                ResBlock(128, 256, n_class, downsample=True),
-                ResBlock(256, 256, n_class),
-                ResBlock(256, 256, n_class, downsample=True),
-                ResBlock(256, 256, n_class),
-            ]
-        )
-        self.linear = nn.Linear(256, 1)
+        else:
+            
+            self.conv1 = weight_norm(nn.Conv2d(self.in_channels, 128, 3, padding=1),'weight')
+            self.blocks = nn.ModuleList(
+                [
+                    ResBlock(128, 128, n_class, downsample=True),
+                    ResBlock(128, 128, n_class),
+                    ResBlock(128, 256, n_class, downsample=True),
+                    ResBlock(256, 256, n_class),
+                    ResBlock(256, 256, n_class, downsample=True),
+                    ResBlock(256, 256, n_class),
+                ]
+            )
+            self.linear = nn.Linear(256, 1)
+
+            self.all_conv_layers = []
+            for n, layer in self.named_modules():
+                if isinstance(layer, Conv2D):
+                    self.all_conv_layers.append(layer)
 
     def forward(self, input, class_id=None):
         out = self.conv1(input)
