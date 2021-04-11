@@ -187,13 +187,13 @@ class Decoder(nn.Module):
         return x_out
 
 class VAE(nn.Module):
-    def __init__(self, latent_dim, img_shape):
+    def __init__(self, latent_dim, img_shape, batch_size):
         super(VAE,self).__init__()
 
         self.latent_dim = latent_dim
         self.img_shape = img_shape
-        self.beta_recon = 1e-6
         self.beta_kl = 0.5
+        self.batch_size=batch_size
     
         self.encoder = Encoder(self.latent_dim,self.img_shape)
         self.decoder = Decoder(self.latent_dim,self.img_shape)
@@ -225,5 +225,5 @@ class VAE(nn.Module):
         latent_kl = 0.5 * (-1 - logvar + mean.pow(2) + logvar.exp()).mean(dim=0)
         total_kl = latent_kl.sum()
 
-        loss = self.beta_recon * recon_loss + self.beta_kl * total_kl
+        loss = (recon_loss / self.batch_size) + self.beta_kl * total_kl
         return loss
