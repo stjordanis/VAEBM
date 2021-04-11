@@ -483,8 +483,8 @@ def train_vaebm(vae,ebm,dataset):
             torch.cuda.empty_cache()
             
         torch.save(ebm.state_dict(),'./results/ebm_model'+str(epoch)+'.ckpt')
-        with open('/results/model_version.txt','w') as f:
-            f.write('model'+str(epoch)+'.ckpt')
+#         with open('/results/model_version.txt','w') as f:
+#             f.write('model'+str(epoch)+'.ckpt')
     
     return 0
 
