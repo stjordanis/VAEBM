@@ -12,7 +12,7 @@ import os
 import torch
 import hamiltorch
 import torchvision
-from torch.optim import Adam
+from torch.optim import AdamW
 from torch.utils.data import DataLoader
 
 from tqdm import tqdm
@@ -201,11 +201,11 @@ def train_vaebm(vae,ebm,dataset):
     vae.eval()    
     ebm.train()
        
-    alpha_e = 0.0
+    alpha_e = 0.
     alpha_n = 0.2
     
     data = load_data(dataset)
-    optimizer = Adam(params=ebm.parameters(),lr=ADAM_LR)
+    optimizer = AdamW(params=ebm.parameters(),lr=ADAM_LR)
     
     for epoch in range(N_EPOCHS):
         
@@ -221,9 +221,9 @@ def train_vaebm(vae,ebm,dataset):
                 neg_energy = ebm(vae.decoder(epsilon))
                 
                 energy_loss = pos_energy.sum() - neg_energy.sum()
-                energy_reg = (pos_energy ** 2 + neg_energy ** 2)
-                norm_reg = ebm.norm_loss()
-                loss = energy_loss + alpha_e * energy_reg + alpha_n * norm_reg
+                energy_reg = (pos_energy ** 2 + neg_energy ** 2).sum()
+                # norm_reg = ebm.norm_loss()
+                loss = energy_loss + alpha_e * energy_reg # + alpha_n * norm_reg
             
             scaler.scale(loss).backward()
             scaler.step(optimizer)
