@@ -463,9 +463,9 @@ def train_vaebm(vae,ebm,dataset):
 
                 pos_energy = ebm(pos_image)
                 neg_energy = ebm(neg_image)
-                energy_loss = pos_energy.sum() - neg_energy.sum()
-                energy_reg =  (pos_energy ** 2).sum() + (neg_energy ** 2).sum()
-                loss = energy_loss + alpha_e * energy_reg
+                energy_loss = pos_energy - neg_energy
+                energy_reg =  pos_energy ** 2 + neg_energy ** 2
+                loss = (energy_loss + alpha_e * energy_reg).mean()
 
             scaler.scale(loss).backward()
             scaler.step(optimizer)
