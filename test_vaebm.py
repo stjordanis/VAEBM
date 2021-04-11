@@ -66,7 +66,6 @@ def langevin_sample_image(vae, ebm, batch_size=TEST_BATCH_SIZE, sampling_steps=L
         loss = loss.detach()
         noise = noise.detach()
 
-    # image_out.requires_grad = False
     return vae.decoder(epsilon)
 
 DATASETS = {
