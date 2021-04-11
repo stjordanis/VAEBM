@@ -91,8 +91,8 @@ def train_vae(vae,dataset):
 
         epoch_losses.append(epoch_losses)
 
-        plt.plot(epoch_losses)
-        plt.savefig("VAE_loss_epoch_"+str(epoch)+".png")
+#         plt.plot(epoch_losses)
+#         plt.savefig("VAE_loss_epoch_"+str(epoch)+".png")
         
         if epoch % 50 == 0:
             torch.save(vae.state_dict(),'./results/vae_model_'+str(dataset)+"_"+str(epoch // 50)+'.ckpt')
