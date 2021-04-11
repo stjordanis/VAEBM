@@ -42,7 +42,6 @@ NUM_WORKERS = 2
 scaler = torch.cuda.amp.GradScaler()
 
 def load_data(dataset):
-    """
     Load the specified dataset for training.                #Need to train VAE on LSUN, CIFAR10, CIFAR100
 
     Parameters--->
@@ -50,7 +49,6 @@ def load_data(dataset):
 
     Returns--->
         data_loader: torch DataLoader object for the dataset
-    """
     
     dataset = dataset.upper().replace(" ","")
     transform = torchvision.transforms.ToTensor()   #Define custom based on different datasets 
@@ -79,7 +77,6 @@ def load_data(dataset):
 
 
 def langevin_sample_epsilon(vae, ebm, batch_size=TRAIN_BATCH_SIZE, sampling_steps=LD_TRAIN_N_STEPS, step_size=LD_TRAIN_STEP_SIZE):
-    """
     Sample epsilon using Langevin dynamics based MCMC, 
     for reparametrizing negative phase sampling in EBM
     (Self-implemented, inefficient)
@@ -93,7 +90,6 @@ def langevin_sample_epsilon(vae, ebm, batch_size=TRAIN_BATCH_SIZE, sampling_step
 
     Returns-->
         epsilon (torch.Tensor): epsilon sample
-    """
 
     epsilon = torch.randn(batch_size,vae.latent_dim,device=device,requires_grad=True)
     vae.eval()
@@ -122,7 +118,6 @@ def langevin_sample_epsilon(vae, ebm, batch_size=TRAIN_BATCH_SIZE, sampling_step
     return epsilon
         
 def langevin_sample(vae, ebm, batch_size=TRAIN_BATCH_SIZE, sampling_steps=LD_TRAIN_N_STEPS, step_size=LD_TRAIN_STEP_SIZE):
-    """
     Sample epsilon using Langevin dynamics based MCMC, 
     for reparametrizing negative phase sampling in EBM
 
@@ -135,7 +130,6 @@ def langevin_sample(vae, ebm, batch_size=TRAIN_BATCH_SIZE, sampling_steps=LD_TRA
 
     Returns-->
         epsilon (torch.Tensor): epsilon sample
-    """
 
     epsilon = torch.randn(batch_size,vae.latent_dim,device=device)
     epsilon.requires_grad = True
@@ -160,14 +154,12 @@ def langevin_sample(vae, ebm, batch_size=TRAIN_BATCH_SIZE, sampling_steps=LD_TRA
 
 def hamiltonian_sample(vae, ebm, batch_size=TRAIN_BATCH_SIZE, sampling_steps=HMC_N_STEPS, step_size=HMC_STEP_SIZE):
     
-    """
     Uses Hamiltorch library for Hamiltonian MC sampling.
     Parameters-->
         vae (torch.nn.module) : VAE model used in VAEBM
         ebm (torch.nn.module) : EBM model used in VAEBM
         batch_size (int): batch size of data, default: 
         
-    """
 
     hamiltorch.set_random_seed(123)
     epsilon = torch.randn(batch_size,vae.latent_dim,device=device)
@@ -186,7 +178,7 @@ def hamiltonian_sample(vae, ebm, batch_size=TRAIN_BATCH_SIZE, sampling_steps=HMC
     
 
 def train_vaebm(vae,ebm,dataset):
-    """
+    
     Train the VAEBM model, with a pre-trained VAE.
 
     Parameters--->
@@ -196,8 +188,7 @@ def train_vaebm(vae,ebm,dataset):
 
     Returns--->
         epoch_losses (list of ints): Losses in all epochs of training
-    """
-
+    
     vae.eval()    
     ebm.train()
        
@@ -283,17 +274,17 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 VAE_DIR = './vae/results/'
 
-LD_TRAIN_N_STEPS = 8
+LD_TRAIN_N_STEPS = 10
 LD_TRAIN_STEP_SIZE = 8e-5
 
 HMC_N_STEPS = 25
 HMC_STEP_SIZE = 0.3093
 
-TRAIN_BATCH_SIZE = 256
-N_EPOCHS = 10
+TRAIN_BATCH_SIZE = 32
+N_EPOCHS = 15
 ADAM_LR = 4e-5
 
-NUM_WORKERS = 4
+NUM_WORKERS = 0
 
 scaler = torch.cuda.amp.GradScaler()
 
@@ -470,15 +461,18 @@ def train_vaebm(vae,ebm,dataset):
                 pos_energy = ebm(pos_image)
                 neg_energy = ebm(neg_image)
 
-                loss = -pos_energy.sum() + neg_energy.sum()
+                loss = pos_energy.sum() - neg_energy.sum()
 
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
 
-            pos_image.detach_(), neg_image.detach_()
-            pos_energy.detach_(), neg_energy.detach_()
-            epsilon.detach_(), loss.detach_()
+            pos_image = pos_image.detach()
+            neg_image = neg_image.detach()
+            pos_energy = pos_energy.detach()
+            neg_energy = neg_energy.detach()
+            epsilon = epsilon.detach()
+            loss = loss.detach()
             
             torch.cuda.empty_cache()
             
