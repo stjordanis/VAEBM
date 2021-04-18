@@ -284,7 +284,7 @@ TRAIN_BATCH_SIZE = 32
 N_EPOCHS = 15
 ADAM_LR = 4e-5
 
-NUM_WORKERS = 0
+NUM_WORKERS = 2
 
 scaler = torch.cuda.amp.GradScaler()
 
@@ -477,7 +477,8 @@ def train_vaebm(vae,ebm,dataset):
             pos_energy = pos_energy.detach()
             neg_energy = neg_energy.detach()
             energy_loss = energy_loss.detach()
-            energy_reg = energy_reg.detach()
+            energy_reg_loss = energy_reg_loss.detach()
+            spectral_norm_loss = spectral_norm_loss.detach()
             epsilon = epsilon.detach()
             loss = loss.detach()
             

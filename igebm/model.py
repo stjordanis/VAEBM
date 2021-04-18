@@ -86,6 +86,9 @@ class IGEBM(nn.Module):
         super().__init__()
         self.dataset = dataset
         self.in_channels = in_channels
+        self.sr_u = {}
+        self.sr_v = {}
+
         if self.dataset == 'celeba':
             
             self.conv1 = weight_norm(nn.Conv2d(3, 64, 3, padding=1),'weight')
