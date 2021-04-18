@@ -337,10 +337,10 @@ def langevin_sample_epsilon(vae, ebm, batch_size=TRAIN_BATCH_SIZE, sampling_step
     Returns-->
         epsilon (torch.Tensor): epsilon sample
     """
-
-    epsilon = torch.randn(batch_size,vae.latent_dim,device=device,requires_grad=True)
     vae.eval()
     ebm.eval()
+
+    epsilon = torch.randn(batch_size,vae.latent_dim,device=device,requires_grad=True)
     
     log_h_eps = lambda eps: ebm(vae.decoder(eps)) + 0.5 * (torch.linalg.norm(eps,dim=1) ** 2)
 
@@ -349,11 +349,11 @@ def langevin_sample_epsilon(vae, ebm, batch_size=TRAIN_BATCH_SIZE, sampling_step
         loss = log_h_eps(epsilon)
         loss.sum().backward()
 
-        epsilon.data.add_(noise, alpha=torch.sqrt(torch.tensor(step_size)))
-
         epsilon.grad.data.clamp_(-0.01,0.01)
 
         epsilon.data.add(epsilon.grad.data, alpha=-0.5*step_size)
+        epsilon.data.add_(noise, alpha=torch.sqrt(torch.tensor(step_size)))
+
         epsilon.grad.detach_()
         epsilon.grad.zero_()
         epsilon.data.clamp_(0, 1)
@@ -361,7 +361,7 @@ def langevin_sample_epsilon(vae, ebm, batch_size=TRAIN_BATCH_SIZE, sampling_step
         loss = loss.detach()
         noise = noise.detach()
 
-    epsilon.requires_grad = False
+    epsilon = epsilon.detach()
     return epsilon
         
 def langevin_sample(vae, ebm, batch_size=TRAIN_BATCH_SIZE, sampling_steps=LD_TRAIN_N_STEPS, step_size=LD_TRAIN_STEP_SIZE):
@@ -464,8 +464,9 @@ def train_vaebm(vae,ebm,dataset):
                 pos_energy = ebm(pos_image)
                 neg_energy = ebm(neg_image)
                 energy_loss = pos_energy - neg_energy
-                energy_reg =  pos_energy ** 2 + neg_energy ** 2
-                loss = (energy_loss + alpha_e * energy_reg).mean()
+                energy_reg_loss =  pos_energy ** 2 + neg_energy ** 2
+                spectral_norm_loss = ebm.spec_norm()
+                loss = (energy_loss + alpha_e * energy_reg_loss).mean() + alpha_n * spectral_norm_loss
 
             scaler.scale(loss).backward()
             scaler.step(optimizer)
@@ -482,9 +483,7 @@ def train_vaebm(vae,ebm,dataset):
             
             torch.cuda.empty_cache()
             
-        torch.save(ebm.state_dict(),'./results/ebm_model'+str(epoch)+'.ckpt')
-#         with open('/results/model_version.txt','w') as f:
-#             f.write('model'+str(epoch)+'.ckpt')
+        torch.save(ebm.state_dict(),'./results/ebm_model_'+str(dataset)+"_"+str(epoch)+'.ckpt')
     
     return 0
 

@@ -1,8 +1,12 @@
 import torch
 
 from torch import nn
+from torch.nn import Conv2d
 from torch.nn import functional as F
 from torch.nn.utils import weight_norm
+
+def norm(t, dim):
+    return torch.sqrt(torch.sum(t * t, dim))
 
 class SpectralNorm:
     def __init__(self, name, bound=False):
@@ -23,13 +27,15 @@ class SpectralNorm:
 
         sigma = u @ weight_mat @ v
 
-        if self.bound:
-            weight_sn = weight / (sigma + 1e-6) * torch.clamp(sigma, max=1)
+        return sigma
 
-        else:
-            weight_sn = weight / sigma
+        # if self.bound:
+        #     weight_sn = weight / (sigma + 1e-6) * torch.clamp(sigma, max=1)
 
-        return weight_sn, u
+        # else:
+        #     weight_sn = weight / sigma
+
+        # return weight_sn, u
 
     @staticmethod
     def apply(module, name, bound):
@@ -175,10 +181,12 @@ class IGEBM(nn.Module):
             )
             self.linear = nn.Linear(256, 1)
 
-            # self.all_conv_layers = []
-            # for n, layer in self.named_modules():
-            #     if isinstance(layer, Conv2D):
-            #         self.all_conv_layers.append(layer)
+        
+        self.all_conv_layers = []
+        for _, layer in self.named_modules():
+            if isinstance(layer, Conv2d):
+                self.all_conv_layers.append(layer)
+        
 
     def forward(self, input, class_id=None):
         out = self.conv1(input)
@@ -193,6 +201,76 @@ class IGEBM(nn.Module):
 
         return out.squeeze(1)
     
+    # def spectral_norm(self, ebm_layer):
+        
+    #     loss = 0
+    #     for l in self.all_conv_layers:
+    #         weight = l.weight
+    #         init = norm(l.weight, dim=[1, 2, 3]).view(-1, 1, 1, 1)
+    #         log_weight_norm = nn.Parameter(torch.log(init + 1e-2), requires_grad=True)
+
+    #         n = torch.exp(log_weight_norm)
+    #         wn = torch.sqrt(torch.sum(weight * weight, dim=[1, 2, 3]))   # norm(w)
+    #         weight = n * weight / (wn.view(-1, 1, 1, 1) + 1e-5)
+
+    #         size = weight.size()
+    #         weight_mat = weight.contiguous().view(size[0], -1)
+
+    #         num_w, row, col = weight.shape
+    #         u = F.normalize(torch.ones(num_w, row).normal_(0, 1).cuda(), dim=1, eps=1e-3)
+    #         v = F.normalize(torch.ones(num_w, col).normal_(0, 1).cuda(), dim=1, eps=1e-3)
+
+    #         with torch.no_grad():
+    #             v = weight_mat.t() @ u
+    #             v = v / v.norm()
+    #             u = weight_mat @ v
+    #             u = u / u.norm()
+
+    #         sigma = u @ weight_mat @ v
+    #         loss = loss + sigma.sum()
+
+    #     return sigma
+
+    def spec_norm(self):
+        weights = {}   # a dictionary indexed by the shape of weights
+        for l in self.all_conv_layers:
+            weight = l.weight
+            init = norm(weight, dim=[1, 2, 3]).view(-1, 1, 1, 1)
+            log_weight_norm = nn.Parameter(torch.log(init + 1e-2), requires_grad=True)
+
+            n = torch.exp(log_weight_norm)
+            wn = torch.sqrt(torch.sum(weight * weight, dim=[1, 2, 3]))   # norm(w)
+            weight = n * weight / (wn.view(-1, 1, 1, 1) + 1e-5)
+
+            weight_mat = weight.view(weight.size(0), -1)
+            if weight_mat.shape not in weights:
+                weights[weight_mat.shape] = []
+
+            weights[weight_mat.shape].append(weight_mat)
+
+        loss = 0
+        for i in weights:
+            weights[i] = torch.stack(weights[i], dim=0)
+            with torch.no_grad():
+                num_iter = 1
+                if i not in self.sr_u:
+                    num_w, row, col = weights[i].shape
+                    self.sr_u[i] = F.normalize(torch.ones(num_w, row).normal_(0, 1).cuda(), dim=1, eps=1e-3)
+                    self.sr_v[i] = F.normalize(torch.ones(num_w, col).normal_(0, 1).cuda(), dim=1, eps=1e-3)
+                    # # increase the number of iterations for the first time
+                    # num_iter = 10 * self.num_power_iter
+
+                for j in range(num_iter):
+                    self.sr_v[i] = F.normalize(torch.matmul(self.sr_u[i].unsqueeze(1), weights[i]).squeeze(1),
+                                               dim=1, eps=1e-3)  # bx1xr * bxrxc --> bx1xc --> bxc
+                    self.sr_u[i] = F.normalize(torch.matmul(weights[i], self.sr_v[i].unsqueeze(2)).squeeze(2),
+                                               dim=1, eps=1e-3)  # bxrxc * bxcx1 --> bxrx1  --> bxr
+
+            sigma = torch.matmul(self.sr_u[i].unsqueeze(1), torch.matmul(weights[i], self.sr_v[i].unsqueeze(2)))
+            loss += torch.sum(sigma)
+        return loss
+
+
     def norm_loss(self):
         loss = 0
         for l in self.all_conv_layers:
