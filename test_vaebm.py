@@ -42,11 +42,12 @@ def langevin_sample_image(vae, ebm, batch_size=TEST_BATCH_SIZE, sampling_steps=L
 
     vae.eval()
     ebm.eval()
-    h_prob_dist_test = lambda epsilon: torch.exp(-ebm(vae.decoder(epsilon))) * torch.exp(-0.5 * (torch.linalg.norm(vae.decoder(epsilon)-image_out,dim=1)) ** 2)    #Confirm second term
+    log_h_prob = lambda epsilon: ebm(vae.decoder(epsilon)) + \
+                                0.5 * torch.linalg.norm(vae.decoder(epsilon)-image_out,dim=1) ** 2
 
     for step in range(sampling_steps):
-        noise = torch.randn(epsilon.shape,device=device)
-        loss = h_prob_dist_test(epsilon)
+        noise = torch.randn_like(epsilon,device=device)
+        loss = log_h_prob(epsilon)
         loss.sum().backward()
 
         epsilon.data.add_(noise, alpha=torch.sqrt(torch.tensor(step_size)))
@@ -57,7 +58,7 @@ def langevin_sample_image(vae, ebm, batch_size=TEST_BATCH_SIZE, sampling_steps=L
         epsilon.grad.zero_()
         epsilon.data.clamp_(0, 1)
         
-        print(torch.linalg.norm(epsilon))
+        # print(torch.linalg.norm(epsilon))
         # sample_img = vae.decoder(epsilon.data)
         # sample_img.detach_()
         # sample_pil = torchvision.transforms.ToPILImage()(image_out[0])
