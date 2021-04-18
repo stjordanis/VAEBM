@@ -8,69 +8,6 @@ from torch.nn.utils import weight_norm
 def norm(t, dim):
     return torch.sqrt(torch.sum(t * t, dim))
 
-class SpectralNorm:
-    def __init__(self, name, bound=False):
-        self.name = name
-        self.bound = bound
-
-    def compute_weight(self, module):
-        weight = getattr(module, self.name + '_orig')
-        u = getattr(module, self.name + '_u')
-        size = weight.size()
-        weight_mat = weight.contiguous().view(size[0], -1)
-
-        with torch.no_grad():
-            v = weight_mat.t() @ u
-            v = v / v.norm()
-            u = weight_mat @ v
-            u = u / u.norm()
-
-        sigma = u @ weight_mat @ v
-
-        return sigma
-
-        # if self.bound:
-        #     weight_sn = weight / (sigma + 1e-6) * torch.clamp(sigma, max=1)
-
-        # else:
-        #     weight_sn = weight / sigma
-
-        # return weight_sn, u
-
-    @staticmethod
-    def apply(module, name, bound):
-        fn = SpectralNorm(name, bound)
-
-        weight = getattr(module, name)
-        del module._parameters[name]
-        module.register_parameter(name + '_orig', weight)
-        input_size = weight.size(0)
-        u = weight.new_empty(input_size).normal_()
-        module.register_buffer(name, weight)
-        module.register_buffer(name + '_u', u)
-
-        module.register_forward_pre_hook(fn)
-
-        return fn
-
-    def __call__(self, module, input):
-        weight_sn, u = self.compute_weight(module)
-        setattr(module, self.name, weight_sn)
-        setattr(module, self.name + '_u', u)
-
-
-def spectral_norm(module, init=True, std=1, bound=False):
-    if init:
-        nn.init.normal_(module.weight, 0, std)
-
-    if hasattr(module, 'bias') and module.bias is not None:
-        module.bias.data.zero_()
-
-    SpectralNorm.apply(module, 'weight', bound=bound)
-
-    return module
-
-
 class ResBlock(nn.Module):
     def __init__(self, in_channel, out_channel, n_class=None, downsample=False):
         super().__init__()
@@ -201,36 +138,7 @@ class IGEBM(nn.Module):
 
         return out.squeeze(1)
     
-    # def spectral_norm(self, ebm_layer):
-        
-    #     loss = 0
-    #     for l in self.all_conv_layers:
-    #         weight = l.weight
-    #         init = norm(l.weight, dim=[1, 2, 3]).view(-1, 1, 1, 1)
-    #         log_weight_norm = nn.Parameter(torch.log(init + 1e-2), requires_grad=True)
-
-    #         n = torch.exp(log_weight_norm)
-    #         wn = torch.sqrt(torch.sum(weight * weight, dim=[1, 2, 3]))   # norm(w)
-    #         weight = n * weight / (wn.view(-1, 1, 1, 1) + 1e-5)
-
-    #         size = weight.size()
-    #         weight_mat = weight.contiguous().view(size[0], -1)
-
-    #         num_w, row, col = weight.shape
-    #         u = F.normalize(torch.ones(num_w, row).normal_(0, 1).cuda(), dim=1, eps=1e-3)
-    #         v = F.normalize(torch.ones(num_w, col).normal_(0, 1).cuda(), dim=1, eps=1e-3)
-
-    #         with torch.no_grad():
-    #             v = weight_mat.t() @ u
-    #             v = v / v.norm()
-    #             u = weight_mat @ v
-    #             u = u / u.norm()
-
-    #         sigma = u @ weight_mat @ v
-    #         loss = loss + sigma.sum()
-
-    #     return sigma
-
+    
     def spec_norm(self):
         weights = {}   # a dictionary indexed by the shape of weights
         for l in self.all_conv_layers:
@@ -268,11 +176,4 @@ class IGEBM(nn.Module):
 
             sigma = torch.matmul(self.sr_u[i].unsqueeze(1), torch.matmul(weights[i], self.sr_v[i].unsqueeze(2)))
             loss += torch.sum(sigma)
-        return loss
-
-
-    def norm_loss(self):
-        loss = 0
-        for l in self.all_conv_layers:
-            loss += l.get_spectral_norm()
         return loss
