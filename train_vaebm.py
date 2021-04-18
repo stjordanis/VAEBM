@@ -327,7 +327,7 @@ def langevin_sample_epsilon(vae, ebm, batch_size=TRAIN_BATCH_SIZE, sampling_step
     """
     Sample epsilon using Langevin dynamics based MCMC, 
     for reparametrizing negative phase sampling in EBM
-    (Self-implemented, inefficient)
+
     Parameters--> 
         vae (torch.nn.module) : VAE model used in VAEBM
         ebm (torch.nn.module) : EBM model used in VAEBM
@@ -342,18 +342,18 @@ def langevin_sample_epsilon(vae, ebm, batch_size=TRAIN_BATCH_SIZE, sampling_step
     vae.eval()
     ebm.eval()
     
-    h_prob_dist = lambda eps: torch.exp(-ebm(vae.decoder(eps))) * torch.exp(-0.5 * (torch.linalg.norm(eps,dim=1) ** 2))
+    log_h_eps = lambda eps: ebm(vae.decoder(eps)) + 0.5 * (torch.linalg.norm(eps,dim=1) ** 2)
 
     for _ in range(sampling_steps):
         noise = torch.randn(batch_size,vae.latent_dim,device=device)
-        loss = h_prob_dist(epsilon)
+        loss = log_h_eps(epsilon)
         loss.sum().backward()
 
         epsilon.data.add_(noise, alpha=torch.sqrt(torch.tensor(step_size)))
 
         epsilon.grad.data.clamp_(-0.01,0.01)
 
-        epsilon.data.add(epsilon.grad.data, alpha=-step_size / 2)
+        epsilon.data.add(epsilon.grad.data, alpha=-0.5*step_size)
         epsilon.grad.detach_()
         epsilon.grad.zero_()
         epsilon.data.clamp_(0, 1)
