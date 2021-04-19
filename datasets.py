@@ -46,7 +46,7 @@ def get_background(dataset):
     return get_dataset(dataset).background_color
 
 
-def get_dataloaders(dataset, root=None, shuffle=True, pin_memory=True, num_workers,
+def get_dataloaders(dataset, num_workers, root=None, shuffle=True, pin_memory=True,
                     batch_size=32, logger=logging.getLogger(__name__), **kwargs):
     """A generic data loader
     Parameters
@@ -168,7 +168,7 @@ class DSprites(DisentangledDataset):
                   'shape': np.array([1., 2., 3.]),
                   'color': np.array([1.])}
 
-    def __init__(self, root=os.path.join(DIR, '../data/dsprites/'), **kwargs):
+    def __init__(self, root=os.path.join(DIR, './data/dsprites/'), **kwargs):
         super().__init__(root, [transforms.ToTensor()], **kwargs)
 
         dataset_zip = np.load(self.train_data)
@@ -227,7 +227,7 @@ class CelebA(DisentangledDataset):
     img_size = (3, 64, 64)
     background_color = COLOUR_WHITE
 
-    def __init__(self, root=os.path.join(DIR, '../data/celeba'), **kwargs):
+    def __init__(self, root=os.path.join(DIR, './data/celeba'), **kwargs):
         super().__init__(root, [transforms.ToTensor()], **kwargs)
 
         self.imgs = glob.glob(self.train_data + '/*')
@@ -294,7 +294,7 @@ class Chairs(datasets.ImageFolder):
     img_size = (1, 64, 64)
     background_color = COLOUR_WHITE
 
-    def __init__(self, root=os.path.join(DIR, '../data/chairs'),
+    def __init__(self, root=os.path.join(DIR, './data/chairs'),
                  logger=logging.getLogger(__name__)):
         self.root = root
         self.train_data = os.path.join(root, type(self).files["train"])
@@ -335,7 +335,7 @@ class MNIST(datasets.MNIST):
     img_size = (1, 32, 32)
     background_color = COLOUR_BLACK
 
-    def __init__(self, root=os.path.join(DIR, '../data/mnist'), **kwargs):
+    def __init__(self, root=os.path.join(DIR, './data/mnist'), **kwargs):
         super().__init__(root,
                          train=True,
                          download=True,
@@ -350,7 +350,7 @@ class FashionMNIST(datasets.FashionMNIST):
     img_size = (1, 32, 32)
     background_color = COLOUR_BLACK
 
-    def __init__(self, root=os.path.join(DIR, '../data/fashionMnist'), **kwargs):
+    def __init__(self, root=os.path.join(DIR, './data/fashionMnist'), **kwargs):
         super().__init__(root,
                          train=True,
                          download=True,
