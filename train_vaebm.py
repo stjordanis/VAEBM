@@ -255,6 +255,7 @@ if __name__=='__main__':
 
 #Code for training VAEBM 
 import os 
+import sys
 
 import torch
 import hamiltorch
@@ -494,7 +495,7 @@ def train_vaebm(vae,ebm,dataset):
 
 
 if __name__=='__main__':
-    dataset = 'mnist'
+    dataset = sys.argv[1]
 
     vae_model_name = 'VAE_'+dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
     vae_model_dir = os.path.join(VAE_DIR,vae_model_name)
