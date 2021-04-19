@@ -270,6 +270,8 @@ from vae.disvae.utils.modelIO import load_model
 from Langevin_dynamics.langevin_sampling.SGLD import SGLD
 from igebm.model import IGEBM
 
+from datasets import Chairs
+
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 VAE_DIR = './vae/results/'
@@ -300,7 +302,7 @@ def load_data(dataset):
     dataset = dataset.upper().replace(" ","")
     transform = torchvision.transforms.ToTensor()   #Define custom based on different datasets 
 
-    if dataset in ['MNIST','CIFAR10','CIFAR100','CelebA','LSUN']:
+    if dataset in ['MNIST','CIFAR10','CIFAR100','CelebA','LSUN', 'CHAIRS']:
         
         if dataset == 'MNIST':
             trainset = torchvision.datasets.MNIST(root='./data', transform=transform)
@@ -312,6 +314,8 @@ def load_data(dataset):
             trainset = torchvision.datasets.CelebA(root='./data',transform=transform)
         if dataset == 'LSUN':
             trainset = torchvision.datasets.LSUN(root='./data', transform=transform)
+        if dataset == 'CHAIRS':
+            trainset = Chairs(root='./data/chairs')
         
 
         trainloader = torch.utils.data.DataLoader(trainset, batch_size=TRAIN_BATCH_SIZE,
