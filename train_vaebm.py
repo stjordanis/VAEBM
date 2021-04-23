@@ -146,7 +146,7 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
     alpha_e = kwargs['alpha_e']
     alpha_n = kwargs['alpha_n']
 
-    data = load_data(dataset)
+    data = load_data(dataset, batch_size=kwargs['batch_size'])
     if dataset == 'celeba':
         buffer = SampleBuffer()
 
