@@ -6,7 +6,7 @@ import torch
 import PIL 
 import matplotlib.pyplot as plt 
 import torchvision
-from torchvision.datasets import MNIST, CIFAR10, CelebA, FashionMNIST
+from torchvision.datasets import MNIST, CelebA
 
 from igebm.model import IGEBM
 from vae.disvae.utils.modelIO import load_model
@@ -17,19 +17,19 @@ VAE_DIR = './vae/results/'
 
 DATASETS = {
             'mnist': MNIST,
-            'chairs': Chairs,
+            # 'chairs': Chairs,
             'celeba': CelebA
 }
 
 LATENT_DIM = {
             'mnist': 10,
-            'chairs': 32,
+            # 'chairs': 32,
             'celeba': 128
 }
 
 IMAGE_SHAPES = {
             'mnist': (1,32,32),
-            'chairs': (1,64,64),
+            # 'chairs': (1,64,64),
             'celeba': (3,64,64)
 }
 
