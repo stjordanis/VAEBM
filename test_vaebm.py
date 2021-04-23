@@ -1,4 +1,6 @@
 import os
+import argparse
+
 import numpy as np
 import torch 
 import PIL 
@@ -12,14 +14,26 @@ from vae.disvae.utils.modelIO import load_model
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 VAE_DIR = './vae/results/'
- 
-LD_TEST_N_STEPS = 8
-LD_TEST_STEP_SIZE = 2e-7
 
-TEST_BATCH_SIZE = 1
+DATASETS = {
+            'mnist': MNIST,
+            'chairs': Chairs,
+            'celeba': CelebA
+}
 
+LATENT_DIM = {
+            'mnist': 10,
+            'chairs': 32,
+            'celeba': 128
+}
 
-def langevin_sample_image(vae, ebm, batch_size=TEST_BATCH_SIZE, sampling_steps=LD_TEST_N_STEPS, step_size=LD_TEST_STEP_SIZE):
+IMAGE_SHAPES = {
+            'mnist': (1,32,32),
+            'chairs': (1,64,64),
+            'celeba': (3,64,64)
+}
+
+def langevin_sample_image(vae, ebm, batch_size, sampling_steps, step_size):
     """
     Sample output image using Langevin dynamics based MCMC, 
     from VAEBM.
@@ -74,32 +88,24 @@ def langevin_sample_image(vae, ebm, batch_size=TEST_BATCH_SIZE, sampling_steps=L
 
     return 0
 
-DATASETS = {
-            'mnist': MNIST,
-            'cifar10': CIFAR10,
-            'celeba': CelebA,
-            'fashion': FashionMNIST
-}
+def main():
 
-LATENT_DIM = {
-            'mnist': 10,
-            'cifar10': 64,
-            'celeba': 128,
-            'fashion': 64
-}
+    parser = argparse.ArgumentParser()
 
-IMAGE_SHAPES = {
-            'mnist': (1,32,32),
-            'cifar10': (3,32,32),
-            'celeba': (3,64,64),
-            'fashion': (1,28,28)
-}
+    parser.add_argument('--dataset',type=str, default='mnist')
+    parser.add_argument('--batch_size',type=int, default=1)
+    parser.add_argument('--step_size', type=float, default=8e-3)
+    parser.add_argument('--steps', type=int, default=16)
+    
+    args = parser.parse_args()
 
-if __name__ == '__main__':
-        
+    dataset = args.dataset
+    batch_size = args.batch_size
+    step_size = args.step_size
+    steps = args.steps 
+
     ebm_model_file = '/content/results/no_clamp_MNIST_14.ckpt'
     
-    dataset = 'mnist'
     vae_model_name = "VAE_"+dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
     vae_model_dir = os.path.join(VAE_DIR,vae_model_name)
     vae = load_model(vae_model_dir).to(device)
@@ -110,4 +116,8 @@ if __name__ == '__main__':
     ebm = ebm.to(device)
     ebm.eval()
 
-    langevin_sample_image(vae, ebm)
+    langevin_sample_image(vae, ebm, batch_size=batch_size, sampling_steps=steps, step_size=step_size)
+
+if __name__ == '__main__':
+    main()
+        
