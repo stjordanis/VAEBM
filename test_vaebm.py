@@ -58,7 +58,7 @@ def langevin_sample_image(vae, ebm, batch_size, sampling_steps, step_size):
     ebm.eval()
     log_h_prob = lambda epsilon: ebm(vae.decoder(epsilon)) + \
                                 0.5 * torch.linalg.norm(vae.decoder(epsilon)-image_out,dim=1) ** 2
-
+    samples = []
     for step in range(sampling_steps):
         noise = torch.randn_like(epsilon,device=device)
         loss = log_h_prob(epsilon)
@@ -72,19 +72,17 @@ def langevin_sample_image(vae, ebm, batch_size, sampling_steps, step_size):
         epsilon.grad.zero_()
         # epsilon.data.clamp_(0, 1)
         
-        # print(torch.linalg.norm(epsilon))
-        # sample_img = vae.decoder(epsilon.data)
-        # sample_img.detach_()
-        # sample_pil = torchvision.transforms.ToPILImage()(image_out[0])
-        # sample_pil.save("sample"+str(step+1)+".jpg")
-
+        sample_img = vae.decoder(epsilon)
+        sample_img = sample_img.detach().to('cpu')
+        samples.append(sample_img)
+        del sample_img
+        
         loss = loss.detach()
         noise = noise.detach()
 
-    image_final = vae.decoder(epsilon)
-    image_final.detach_()
-    image_final_pil = torchvision.transforms.ToPILImage()(image_final[0])
-    image_final_pil.save("final.jpg")
+    for step, sample in enumerate(samples):
+        sample_pil = torchvision.transforms.ToPILImage()(sample[0])
+        sample_pil.save("sample"+str(step+1)+".jpg")
 
     return 0
 
@@ -120,4 +118,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-        
