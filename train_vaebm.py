@@ -16,7 +16,7 @@ from vae.disvae.training import Trainer
 from vae.disvae.utils.modelIO import load_model
 from Langevin_dynamics.langevin_sampling.SGLD import SGLD
 from igebm.model import IGEBM
-from igebm.train import SampleBuffer
+# from igebm.train import SampleBuffer
 
 from datasets import Chairs
 
