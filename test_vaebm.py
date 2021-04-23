@@ -13,8 +13,8 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 VAE_DIR = './vae/results/'
  
-LD_TEST_N_STEPS = 16
-LD_TEST_STEP_SIZE = 8e-5
+LD_TEST_N_STEPS = 8
+LD_TEST_STEP_SIZE = 2e-7
 
 TEST_BATCH_SIZE = 1
 
@@ -56,7 +56,7 @@ def langevin_sample_image(vae, ebm, batch_size=TEST_BATCH_SIZE, sampling_steps=L
         epsilon.data.add(epsilon.grad.data, alpha=-step_size / 2)
         epsilon.grad.detach_()
         epsilon.grad.zero_()
-        epsilon.data.clamp_(0, 1)
+        # epsilon.data.clamp_(0, 1)
         
         # print(torch.linalg.norm(epsilon))
         # sample_img = vae.decoder(epsilon.data)
@@ -67,7 +67,12 @@ def langevin_sample_image(vae, ebm, batch_size=TEST_BATCH_SIZE, sampling_steps=L
         loss = loss.detach()
         noise = noise.detach()
 
-    return vae.decoder(epsilon)
+    image_final = vae.decoder(epsilon)
+    image_final.detach_()
+    image_final_pil = torchvision.transforms.ToPILImage()(image_final[0])
+    image_final_pil.save("final.jpg")
+
+    return 0
 
 DATASETS = {
             'mnist': MNIST,
@@ -92,7 +97,7 @@ IMAGE_SHAPES = {
 
 if __name__ == '__main__':
         
-    ebm_model_file = 'ebm_model9.ckpt'
+    ebm_model_file = '/content/results/no_clamp_MNIST_14.ckpt'
     
     dataset = 'mnist'
     vae_model_name = "VAE_"+dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
@@ -105,8 +110,4 @@ if __name__ == '__main__':
     ebm = ebm.to(device)
     ebm.eval()
 
-    image_out = langevin_sample_image(vae, ebm)
     langevin_sample_image(vae, ebm)
-
-    image_out = torchvision.transforms.ToPILImage()(image_out[0])
-    image_out = image_out.save("final.jpg")
