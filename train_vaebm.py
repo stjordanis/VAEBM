@@ -146,9 +146,14 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
     alpha_e = kwargs['alpha_e']
     alpha_n = kwargs['alpha_n']
 
-    data = load_data(dataset, batch_size=kwargs['batch_size'])
-    if dataset == 'celeba':
-        buffer = SampleBuffer()
+    data = load_data(
+        dataset, 
+        batch_size=kwargs['batch_size'], 
+        num_workers=kwargs['num_workers']
+    )
+    
+    # if dataset == 'celeba':
+    #     buffer = SampleBuffer()
 
     optimizer = Adam(params=ebm.parameters(),lr=kwargs['train_step_size'])
     
@@ -163,8 +168,8 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
                 epsilon = langevin_sample(
                     vae=vae,ebm=ebm,
                     batch_size=kwargs['batch_size'], 
-                    sampling_steps=kwargs['sample_steps'],
-                    step_size=kwargs['sample_step_size']
+                    sample_steps=kwargs['sample_steps'],
+                    sample_step_size=kwargs['sample_step_size']
                 )
 
                 with torch.no_grad():
@@ -229,7 +234,7 @@ if __name__=='__main__':
 
     train_vaebm(
         vae=vae,ebm=ebm,
-        dataset=args.dataset, batch_size=args.batch_size,
+        dataset=args.dataset, batch_size=args.batch_size, num_workers=args.num_workers,
         alpha_e=args.l2_reg_weight, alpha_n=args.spectral_norm_weight,
         sample_steps=args.sample_steps, sample_step_size=args.sample_step_size, 
         train_steps=args.train_steps, train_step_size=args.train_step_size
