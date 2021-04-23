@@ -143,8 +143,8 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
     vae.eval()    
     ebm.train()
     
-    alpha_e = kwargs['l2_reg_weight']
-    alpha_n = kwargs['spectral_norm_weight']
+    alpha_e = kwargs['alpha_e']
+    alpha_n = kwargs['alpha_n']
 
     data = load_data(dataset)
     if dataset == 'celeba':
@@ -228,11 +228,11 @@ if __name__=='__main__':
     ebm.train()
 
     train_vaebm(
-        vae=vae,ebm=ebm,dataset=args.dataset,
+        vae=vae,ebm=ebm,
+        dataset=args.dataset, batch_size=args.batch_size,
         alpha_e=args.l2_reg_weight, alpha_n=args.spectral_norm_weight,
-        sample_batch_size=args.batch_size, sample_steps=args.sample_steps, 
-        sample_step_size=args.sample_step_size, train_steps=args.train_steps, 
-        train_step_size=args.train_step_size, train_batch_size=args.train_batch_size
+        sample_steps=args.sample_steps, sample_step_size=args.sample_step_size, 
+        train_steps=args.train_steps, train_step_size=args.train_step_size
     )
 
 #sample_batch_size,
