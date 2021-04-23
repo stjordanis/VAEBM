@@ -51,8 +51,6 @@ def langevin_sample_image(vae, ebm, batch_size, sampling_steps, step_size):
     epsilon = torch.randn(batch_size, vae.latent_dim, requires_grad=True, device=device)
     image_out = vae.decoder(epsilon)
     image_out.detach_()
-    image_out_pil = torchvision.transforms.ToPILImage()(image_out[0])
-    image_out_pil.save("initial.jpg")
 
     vae.eval()
     ebm.eval()
@@ -70,7 +68,6 @@ def langevin_sample_image(vae, ebm, batch_size, sampling_steps, step_size):
         epsilon.data.add(epsilon.grad.data, alpha=-step_size / 2)
         epsilon.grad.detach_()
         epsilon.grad.zero_()
-        # epsilon.data.clamp_(0, 1)
         
         sample_img = vae.decoder(epsilon)
         sample_img = sample_img.detach().to('cpu')
@@ -118,3 +115,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+        

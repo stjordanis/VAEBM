@@ -17,3 +17,7 @@ vae/disvae/__pycache__/__init__.cpython-36.pyc
 conv_resnet_model.py
 DCGAN_VAE_logistic.py
 train_latentEBM_conv.py
+Re_ Query regarding the VAEBM paper.zip
+data/cifar-10-batches-py/readme.html
+data/cifar-10-batches-py/test_batch
+spec_norm_class.py
