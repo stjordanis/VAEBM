@@ -230,7 +230,7 @@ if __name__=='__main__':
     train_vaebm(
         vae=vae,ebm=ebm,dataset=args.dataset,
         alpha_e=args.l2_reg_weight, alpha_n=args.spectral_norm_weight,
-        sample_batch_size=args.sample_batch_size, sample_steps=args.sample_steps, 
+        sample_batch_size=args.batch_size, sample_steps=args.sample_steps, 
         sample_step_size=args.sample_step_size, train_steps=args.train_steps, 
         train_step_size=args.train_step_size, train_batch_size=args.train_batch_size
     )
