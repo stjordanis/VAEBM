@@ -214,7 +214,7 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
     return 0
 
 
-if _name=='main_':
+if __name__=='__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--vae_type',type=str, default='VAE')
