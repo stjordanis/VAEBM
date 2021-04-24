@@ -4,6 +4,7 @@ import argparse
 import numpy as np
 import torch 
 import PIL 
+from PIL import Image
 import matplotlib.pyplot as plt 
 import torchvision
 from torchvision.datasets import MNIST, CelebA
@@ -32,6 +33,32 @@ IMAGE_SHAPES = {
             # 'chairs': (1,64,64),
             'celeba': (3,64,64)
 }
+
+def process_samples(samples):
+    '''
+    Creates and saves final traversal image for samples generated.
+
+    Input:
+        samples (list): list of Torch.tensor, samples from VAEBM
+
+    Returns:
+        None
+    '''
+    for sample in samples:
+        sample = torchvision.transforms.ToPILImage()(sample[0])
+    
+    im_samples = [Image.open(sample) for sample in samples]
+    widths, heights = zip(*(i.size for i in im_samples))
+    W = sum(widths), L = max(heights)
+
+    final_im = Image.new('RGB', (W,L))
+
+    pos = 0
+    for im_sample in im_samples:
+        final_im.paste(im_sample, (pos,0))
+        pos += im_sample.size[0]
+
+    final_im.save('sample_traversal.png')
 
 def langevin_sample_image(vae, ebm, batch_size, sampling_steps, step_size):
     """
@@ -87,6 +114,7 @@ def main():
 
     parser = argparse.ArgumentParser()
 
+    parser.add_argument('--vae_type',type=str, default='VAE')
     parser.add_argument('--dataset',type=str, default='mnist')
     parser.add_argument('--batch_size',type=int, default=1)
     parser.add_argument('--step_size', type=float, default=8e-3)
@@ -94,6 +122,7 @@ def main():
     
     args = parser.parse_args()
 
+    vae_type = args.vae_type
     dataset = args.dataset
     batch_size = args.batch_size
     step_size = args.step_size
@@ -101,7 +130,7 @@ def main():
 
     ebm_model_file = '/content/results/no_clamp_MNIST_14.ckpt'
     
-    vae_model_name = "VAE_"+dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
+    vae_model_name = vae_type + '_' +dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
     vae_model_dir = os.path.join(VAE_DIR,vae_model_name)
     vae = load_model(vae_model_dir).to(device)
     vae.eval()
