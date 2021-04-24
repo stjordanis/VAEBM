@@ -159,18 +159,27 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
     
     for epoch in range(kwargs['train_steps']):
         
-        for _ ,(pos_image, _) in tqdm(enumerate(data), total=len(data), leave=False):
+        for idx ,(pos_image, _) in tqdm(enumerate(data), total=len(data), leave=False):
             optimizer.zero_grad(set_to_none=True)
 
             with torch.cuda.amp.autocast():
                 pos_image = pos_image.to(device)
                 
-                epsilon = langevin_sample(
-                    vae=vae,ebm=ebm,
-                    batch_size=kwargs['batch_size'], 
-                    sample_steps=kwargs['sample_steps'],
-                    sample_step_size=kwargs['sample_step_size']
-                )
+                if kwargs['sample_type'] == 'langevin':
+                    epsilon = langevin_sample(
+                        vae=vae,ebm=ebm,
+                        batch_size=kwargs['batch_size'], 
+                        sample_steps=kwargs['sample_steps'],
+                        sample_step_size=kwargs['sample_step_size']
+                    )
+
+                else:
+                    epsilon = hamiltonian_sample(
+                        vae=vae,ebm=ebm,
+                        batch_size=kwargs['batch_size'], 
+                        sample_steps=kwargs['sample_steps'],
+                        sample_step_size=kwargs['sample_step_size']
+                    )
 
                 with torch.no_grad():
                     neg_image = vae.decoder(epsilon)
@@ -197,7 +206,9 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
             loss = loss.detach()
             
             torch.cuda.empty_cache()
-            
+            if dataset == 'chairs':
+                if idx == 2697:
+                    break
         torch.save(ebm.state_dict(),'./results/ebm_model_'+str(dataset)+"_"+str(epoch)+'.ckpt')
     
     return 0
@@ -206,6 +217,7 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
 if __name__=='__main__':
 
     parser = argparse.ArgumentParser()
+    parser.add_argument('--vae_type',type=str, default='VAE')
     
     parser.add_argument('--num_workers',type=int, default=2)
     parser.add_argument('--dataset',type=str, default='mnist')
@@ -223,7 +235,7 @@ if __name__=='__main__':
     
     args = parser.parse_args()
 
-    vae_model_name = 'VAE_'+args.dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
+    vae_model_name = args.vae_type + '_' + args.dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
     vae_model_dir = os.path.join(VAE_DIR,vae_model_name)
 
     vae = load_model(vae_model_dir).to(device)

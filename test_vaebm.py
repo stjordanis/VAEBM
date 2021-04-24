@@ -34,31 +34,31 @@ IMAGE_SHAPES = {
             'celeba': (3,64,64)
 }
 
-def process_samples(samples):
-    '''
-    Creates and saves final traversal image for samples generated.
+# def process_samples(samples):
+#     '''
+#     Creates and saves final traversal image for samples generated.
 
-    Input:
-        samples (list): list of Torch.tensor, samples from VAEBM
+#     Input:
+#         samples (list): list of Torch.tensor, samples from VAEBM
 
-    Returns:
-        None
-    '''
-    for sample in samples:
-        sample = torchvision.transforms.ToPILImage()(sample[0])
+#     Returns:
+#         None
+#     '''
+#     for sample in samples:
+#         sample = torchvision.transforms.ToPILImage()(sample[0])
     
-    im_samples = [Image.open(sample) for sample in samples]
-    widths, heights = zip(*(i.size for i in im_samples))
-    W = sum(widths), L = max(heights)
+#     im_samples = [Image.open(sample) for sample in samples]
+#     widths, heights = zip(i.size for i in im_samples)
+#     W = sum(widths), L = max(heights)
 
-    final_im = Image.new('RGB', (W,L))
+#     final_im = Image.new('RGB', (W,L))
 
-    pos = 0
-    for im_sample in im_samples:
-        final_im.paste(im_sample, (pos,0))
-        pos += im_sample.size[0]
+#     pos = 0
+#     for im_sample in im_samples:
+#         final_im.paste(im_sample, (pos,0))
+#         pos += im_sample.size[0]
 
-    final_im.save('sample_traversal.png')
+#     final_im.save('sample_traversal.png')
 
 def langevin_sample_image(vae, ebm, batch_size, sampling_steps, step_size):
     """
@@ -107,7 +107,7 @@ def langevin_sample_image(vae, ebm, batch_size, sampling_steps, step_size):
     for step, sample in enumerate(samples):
         sample_pil = torchvision.transforms.ToPILImage()(sample[0])
         sample_pil.save("sample"+str(step+1)+".jpg")
-
+    
     return 0
 
 def main():
