@@ -3,6 +3,7 @@ import argparse
 
 import numpy as np
 import torch 
+from torch.nn.functional import mse_loss
 import PIL 
 from PIL import Image
 import matplotlib.pyplot as plt 
@@ -34,7 +35,22 @@ IMAGE_SHAPES = {
             'celeba': (3,64,64)
 }
 
-def process_samples(samples):
+def generate_samples(samples, batch_size):
+    final_samples = samples[-1]
+
+    side_n = int(np.sqrt(batch_size))
+    w, l = samples[0].shape[2], samples[0].shape[3]
+    W, L = side_n * w, side_n * l
+    
+    final_im = Image.new('RGB', (W,L))
+
+    for i in range(side_n):
+        for j in range(side_n):
+            final_im.paste(ToPILImage()(final_samples[side_n*i + j]), (i*w, j*l))
+
+    final_im.save("random_samples.png")
+
+def traverse_samples(samples, batch_size):
     '''
     Creates and saves final traversal image for samples generated.
 
@@ -44,17 +60,21 @@ def process_samples(samples):
     Returns:
         None
     '''
-    
-    im_samples = [ToPILImage()(sample[0]) for sample in samples]
-    
-    W = len(samples) * im_samples[0].size[0]
-    L = im_samples[0].size[1]
-    final_im = Image.new('RGB', (W,L))
+    W = len(samples) * samples[0].shape[2]
+    L = batch_size * samples[0].shape[3]
+    # print(W,L)
 
-    pos = 0
-    for im_sample in im_samples:
-        final_im.paste(im_sample, (pos,0))
-        pos += im_sample.size[0]
+    final_im = Image.new('RGB', (W,L))
+    
+    x_pos = 0
+
+    for sample_step in samples:
+        y_pos = 0
+        for sample in sample_step:
+            im_sample = ToPILImage()(sample[0])
+            final_im.paste(im_sample, (x_pos,y_pos))
+            y_pos += sample_step.shape[3]
+        x_pos += sample_step.shape[2]
 
     final_im.save('sample_traversal.png')
 
@@ -75,13 +95,17 @@ def langevin_sample_image(vae, ebm, batch_size, sampling_steps, step_size):
     """
     epsilon = torch.randn(batch_size, vae.latent_dim, requires_grad=True, device=device)
     image_out = vae.decoder(epsilon)
+    print(torch.linalg.norm(vae.decoder(epsilon)-image_out,dim=1).shape)
     image_out.detach_()
 
     vae.eval()
     ebm.eval()
     log_h_prob = lambda epsilon: ebm(vae.decoder(epsilon)) + \
-                                0.5 * torch.linalg.norm(vae.decoder(epsilon)-image_out,dim=1) ** 2
+                                 0.5 * mse_loss(vae.decoder(epsilon),image_out)
+    # log_h_prob = lambda eps: ebm(vae.decoder(eps)) + 0.5 * (torch.linalg.norm(eps,dim=1) ** 2)
+    
     samples = []
+
     for step in range(sampling_steps):
         noise = torch.randn_like(epsilon,device=device)
         loss = log_h_prob(epsilon)
@@ -102,10 +126,9 @@ def langevin_sample_image(vae, ebm, batch_size, sampling_steps, step_size):
         loss = loss.detach()
         noise = noise.detach()
 
-    # for step, sample in enumerate(samples):
-    #     sample_pil = torchvision.transforms.ToPILImage()(sample[0])
-    #     sample_pil.save("sample"+str(step+1)+".jpg")
-    process_samples(samples)
+    traverse_samples(samples, batch_size=batch_size)
+    # generate_samples(samples, batch_size=batch_size)  #Prefer perfect square batch_size for this
+
     return 0
 
 def main():
@@ -126,7 +149,7 @@ def main():
     step_size = args.step_size
     steps = args.steps 
 
-    ebm_model_file = '/content/results/ebm_factor_mnist_14.ckpt'
+    ebm_model_file = '/content/results/ebm_model_chairs_8.ckpt'
     
     vae_model_name = vae_type + '_' +dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
     vae_model_dir = os.path.join(VAE_DIR,vae_model_name)
