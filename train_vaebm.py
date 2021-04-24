@@ -159,7 +159,7 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
     
     for epoch in range(kwargs['train_steps']):
         
-        for idx ,(pos_image, _) in tqdm(enumerate(data), total=len(data), leave=False):
+        for idx ,(pos_image, _) in tqdm(enumerate(data), total=len(data)):
             optimizer.zero_grad(set_to_none=True)
 
             with torch.cuda.amp.autocast():
@@ -187,7 +187,7 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
                 pos_energy = ebm(pos_image)
                 neg_energy = ebm(neg_image)
                 energy_loss = pos_energy - neg_energy
-                energy_reg_loss =  pos_energy ** 2 + neg_energy ** 2
+                energy_reg_loss =  pos_energy * 2 + neg_energy * 2
                 spectral_norm_loss = ebm.spec_norm()
                 loss = (energy_loss + alpha_e * energy_reg_loss).mean() + alpha_n * spectral_norm_loss
 
@@ -209,12 +209,12 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
             if dataset == 'chairs':
                 if idx == 2697:
                     break
-        torch.save(ebm.state_dict(),'./results/ebm_model_'+str(dataset)+"_"+str(epoch)+'.ckpt')
+        torch.save(ebm.state_dict(),'/content/gdrive/MyDrive/results/factor_ebm_model_'+str(dataset)+"_"+str(epoch)+'.ckpt')
     
     return 0
 
 
-if __name__=='__main__':
+if _name=='main_':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--vae_type',type=str, default='VAE')
@@ -247,11 +247,7 @@ if __name__=='__main__':
     train_vaebm(
         vae=vae,ebm=ebm,
         dataset=args.dataset, batch_size=args.batch_size, num_workers=args.num_workers,
-        alpha_e=args.l2_reg_weight, alpha_n=args.spectral_norm_weight,
+        alpha_e=args.l2_reg_weight, alpha_n=args.spectral_norm_weight, sample_type=args.sampling_type,
         sample_steps=args.sample_steps, sample_step_size=args.sample_step_size, 
         train_steps=args.train_steps, train_step_size=args.train_step_size
     )
-
-#sample_batch_size,
-#sample_steps, sample_step_size, train_steps,
-#train_step_size, train_batch_size,
