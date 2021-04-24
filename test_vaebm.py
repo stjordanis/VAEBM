@@ -8,7 +8,7 @@ from PIL import Image
 import matplotlib.pyplot as plt 
 import torchvision
 from torchvision.datasets import MNIST, CelebA
-
+from torchvision.transforms import ToPILImage
 from igebm.model import IGEBM
 from vae.disvae.utils.modelIO import load_model
 
@@ -34,31 +34,29 @@ IMAGE_SHAPES = {
             'celeba': (3,64,64)
 }
 
-# def process_samples(samples):
-#     '''
-#     Creates and saves final traversal image for samples generated.
+def process_samples(samples):
+    '''
+    Creates and saves final traversal image for samples generated.
 
-#     Input:
-#         samples (list): list of Torch.tensor, samples from VAEBM
+    Input:
+        samples (list): list of Torch.tensor, samples from VAEBM
 
-#     Returns:
-#         None
-#     '''
-#     for sample in samples:
-#         sample = torchvision.transforms.ToPILImage()(sample[0])
+    Returns:
+        None
+    '''
     
-#     im_samples = [Image.open(sample) for sample in samples]
-#     widths, heights = zip(i.size for i in im_samples)
-#     W = sum(widths), L = max(heights)
+    im_samples = [ToPILImage()(sample[0]) for sample in samples]
+    
+    W = len(samples) * im_samples[0].size[0]
+    L = im_samples[0].size[1]
+    final_im = Image.new('RGB', (W,L))
 
-#     final_im = Image.new('RGB', (W,L))
+    pos = 0
+    for im_sample in im_samples:
+        final_im.paste(im_sample, (pos,0))
+        pos += im_sample.size[0]
 
-#     pos = 0
-#     for im_sample in im_samples:
-#         final_im.paste(im_sample, (pos,0))
-#         pos += im_sample.size[0]
-
-#     final_im.save('sample_traversal.png')
+    final_im.save('sample_traversal.png')
 
 def langevin_sample_image(vae, ebm, batch_size, sampling_steps, step_size):
     """
@@ -104,10 +102,10 @@ def langevin_sample_image(vae, ebm, batch_size, sampling_steps, step_size):
         loss = loss.detach()
         noise = noise.detach()
 
-    for step, sample in enumerate(samples):
-        sample_pil = torchvision.transforms.ToPILImage()(sample[0])
-        sample_pil.save("sample"+str(step+1)+".jpg")
-    
+    # for step, sample in enumerate(samples):
+    #     sample_pil = torchvision.transforms.ToPILImage()(sample[0])
+    #     sample_pil.save("sample"+str(step+1)+".jpg")
+    process_samples(samples)
     return 0
 
 def main():
@@ -128,7 +126,7 @@ def main():
     step_size = args.step_size
     steps = args.steps 
 
-    ebm_model_file = '/content/results/no_clamp_MNIST_14.ckpt'
+    ebm_model_file = '/content/results/ebm_factor_mnist_14.ckpt'
     
     vae_model_name = vae_type + '_' +dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
     vae_model_dir = os.path.join(VAE_DIR,vae_model_name)
@@ -144,4 +142,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-        
