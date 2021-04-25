@@ -162,8 +162,8 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
     optimizer = Adam(params=ebm.parameters(),lr=kwargs['train_step_size'])
     
     for epoch in range(kwargs['train_steps']):
-        
-        for idx ,(pos_image, _) in tqdm(enumerate(data), total=len(data)):
+        iterator = tqdm(enumerate(data), total=len(data))
+        for idx ,(pos_image, _) in iterator:
             optimizer.zero_grad(set_to_none=True)
 
             with torch.cuda.amp.autocast():
@@ -215,6 +215,7 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
                     break
             elif dataset == 'celeba':
                 if idx == 6330:
+                    iterator.close()
                     break
         torch.save(ebm.state_dict(),'/content/gdrive/MyDrive/results/' + kwargs['vae_type'] + '_ebm_'+str(dataset)+"_"+str(epoch)+'.ckpt')
     
