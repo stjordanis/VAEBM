@@ -9,6 +9,8 @@ import torchvision
 from torch.optim import Adam
 from torch.utils.data import DataLoader
 from torchvision.datasets import MNIST, CelebA
+from torchvision.transforms import Compose, ToTensor, CenterCrop, Resize
+
 from tqdm import tqdm
 import matplotlib.pyplot as plt
 
@@ -39,14 +41,16 @@ def load_data(dataset, **kwargs):
     """
     
     dataset = dataset.upper().replace(" ","")
-    transform = torchvision.transforms.ToTensor()   #Define custom based on different datasets 
-
+    transform = ToTensor()   #Define custom based on different datasets 
+    celeba_transform = Compose([Resize((64,64)),
+                                CenterCrop(178),
+                                ToTensor()])
     if dataset in ['MNIST','CELEBA','CHAIRS']:
         
         if dataset == 'MNIST':
             trainset = MNIST(root='./data', transform=transform)
-        if dataset == 'CelebA':
-            trainset = CelebA(root='./data',transform=transform)
+        if dataset == 'CELEBA':
+            trainset = CelebA(root='./data',transform=celeba_transform, download=True)
         if dataset == 'CHAIRS':
             trainset = Chairs(root='./data/chairs')
         
@@ -209,7 +213,7 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
             if dataset == 'chairs':
                 if idx == 2697:
                     break
-        torch.save(ebm.state_dict(),'/content/gdrive/MyDrive/results/factor_ebm_model_'+str(dataset)+"_"+str(epoch)+'.ckpt')
+        torch.save(ebm.state_dict(),'/content/gdrive/MyDrive/results/vae_ebm_'+str(dataset)+"_"+str(epoch)+'.ckpt')
     
     return 0
 
@@ -227,11 +231,11 @@ if __name__=='__main__':
     parser.add_argument('--spectral_norm_weight', type=float, default=0.2)
 
     parser.add_argument('--sampling_type',type=str, default='langevin')
-    parser.add_argument('--sample_step_size', type=float, default=8e-5)
+    parser.add_argument('--sample_step_size', type=float, default=5e-6)
     parser.add_argument('--sample_steps', type=int, default=10)
 
-    parser.add_argument('--train_step_size', type=float, default=4e-5)
-    parser.add_argument('--train_steps', type=int, default=15)
+    parser.add_argument('--train_step_size', type=float, default=5e-5)
+    parser.add_argument('--train_steps', type=int, default=4)
     
     args = parser.parse_args()
 
@@ -247,7 +251,8 @@ if __name__=='__main__':
     train_vaebm(
         vae=vae,ebm=ebm,
         dataset=args.dataset, batch_size=args.batch_size, num_workers=args.num_workers,
-        alpha_e=args.l2_reg_weight, alpha_n=args.spectral_norm_weight, sample_type=args.sampling_type,
+        alpha_e=args.l2_reg_weight, alpha_n=args.spectral_norm_weight, 
+        sample_type=args.sampling_type,
         sample_steps=args.sample_steps, sample_step_size=args.sample_step_size, 
         train_steps=args.train_steps, train_step_size=args.train_step_size
     )
