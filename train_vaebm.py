@@ -8,7 +8,7 @@ import hamiltorch
 import torchvision
 from torch.optim import Adam
 from torch.utils.data import DataLoader
-from torchvision.datasets import MNIST, CelebA
+from torchvision.datasets import MNIST
 from torchvision.transforms import Compose, ToTensor, CenterCrop, Resize
 
 from tqdm import tqdm
@@ -20,7 +20,7 @@ from Langevin_dynamics.langevin_sampling.SGLD import SGLD
 from igebm.model import IGEBM
 # from igebm.train import SampleBuffer
 
-from datasets import Chairs
+from datasets import Chairs, CelebA
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -50,7 +50,7 @@ def load_data(dataset, **kwargs):
         if dataset == 'MNIST':
             trainset = MNIST(root='./data', transform=transform)
         if dataset == 'CELEBA':
-            trainset = CelebA(root='./data',transform=celeba_transform, download=True)
+            trainset = CelebA(root='./data/celeba')
         if dataset == 'CHAIRS':
             trainset = Chairs(root='./data/chairs')
         
@@ -213,7 +213,7 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
             if dataset == 'chairs':
                 if idx == 2697:
                     break
-        torch.save(ebm.state_dict(),'/content/gdrive/MyDrive/results/vae_ebm_'+str(dataset)+"_"+str(epoch)+'.ckpt')
+        torch.save(ebm.state_dict(),'/content/gdrive/MyDrive/results/'+ kwargs['vae_type']+'_ebm_'+str(dataset)+"_"+str(epoch)+'.ckpt')
     
     return 0
 
@@ -245,14 +245,14 @@ if __name__=='__main__':
     vae = load_model(vae_model_dir).to(device)
     vae.eval()
 
-    ebm = IGEBM().to(device)
+    ebm = IGEBM(dataset=args.dataset).to(device)
     ebm.train()
 
     train_vaebm(
         vae=vae,ebm=ebm,
         dataset=args.dataset, batch_size=args.batch_size, num_workers=args.num_workers,
         alpha_e=args.l2_reg_weight, alpha_n=args.spectral_norm_weight, 
-        sample_type=args.sampling_type,
+        sample_type=args.sampling_type, vae_type=args.vae_type,
         sample_steps=args.sample_steps, sample_step_size=args.sample_step_size, 
         train_steps=args.train_steps, train_step_size=args.train_step_size
     )
