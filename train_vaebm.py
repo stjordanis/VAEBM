@@ -216,7 +216,7 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
             elif dataset == 'celeba':
                 if idx == 6330:
                     break
-        torch.save(ebm.state_dict(),'/content/gdrive/MyDrive/results/vae_ebm_'+str(dataset)+"_"+str(epoch)+'.ckpt')
+        torch.save(ebm.state_dict(),'/content/gdrive/MyDrive/results/' + kwargs['vae_type']+'_ebm_'+str(dataset)+"_"+str(epoch)+'.ckpt')
     
     return 0
 
