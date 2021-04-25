@@ -216,7 +216,7 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
             elif dataset == 'celeba':
                 if idx == 6330:
                     break
-        torch.save(ebm.state_dict(),'/content/gdrive/MyDrive/results/' + kwargs['vae_type']+'_ebm_'+str(dataset)+"_"+str(epoch)+'.ckpt')
+        torch.save(ebm.state_dict(),'/content/gdrive/MyDrive/results/' + kwargs['vae_type'] + '_ebm_'+str(dataset)+"_"+str(epoch)+'.ckpt')
     
     return 0
 
@@ -255,7 +255,7 @@ if __name__=='__main__':
         vae=vae,ebm=ebm,
         dataset=args.dataset, batch_size=args.batch_size, num_workers=args.num_workers,
         alpha_e=args.l2_reg_weight, alpha_n=args.spectral_norm_weight, 
-        sample_type=args.sampling_type,
+        sample_type=args.sampling_type, vae_type=args.vae_type,
         sample_steps=args.sample_steps, sample_step_size=args.sample_step_size, 
         train_steps=args.train_steps, train_step_size=args.train_step_size
     )
