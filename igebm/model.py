@@ -96,7 +96,7 @@ class IGEBM(nn.Module):
                 [
                     ResBlock(64, 64, n_class, downsample=True),
                     ResBlock(64, 64, n_class),
-                    ResBlock(128, 128, n_class, downsample=True),
+                    ResBlock(64, 128, n_class, downsample=True),
                     ResBlock(128, 128, n_class),
                     ResBlock(128, 128, n_class, downsample=True),
                     ResBlock(128, 256, n_class),
