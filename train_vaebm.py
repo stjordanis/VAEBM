@@ -100,48 +100,6 @@ def langevin_sample(vae, ebm, **kwargs):
 
     epsilon = epsilon.detach()
     return epsilon
-        
-
-def hamiltonian_sample(vae, ebm, **kwargs):
-    
-    """
-    Uses Hamiltorch library for Hamiltonian MC sampling.
-    Parameters-->
-        vae (torch.nn.module) : VAE model used in VAEBM
-        ebm (torch.nn.module) : EBM model used in VAEBM
-        **kwargs:
-            batch_size (int): batch size of data, default: 32 
-    """
-
-    hamiltorch.set_random_seed(123)
-    
-    if kwargs['sampler_type'] == 'hmc':
-        sampler = hamiltorch.Sampler.HMC      #Standard HMC
-
-    elif kwargs['sampler_type'] == 'rmhmc':
-        sampler = hamiltorch.Sampler.RMHMC      #Riemannian HMC
-
-    else:
-        raise Exception('Invalid sample type')
-
-    epsilon = torch.randn(kwargs['batch_size'],vae.latent_dim,device=device)
-    
-    epsilon.requires_grad = True
-    vae.eval()
-    ebm.eval()
-
-    log_h_prob = lambda eps: (-ebm(vae.decoder(eps)) - 0.5 * (torch.linalg.norm(eps,dim=1) ** 2)).sum()
-
-    epsilon_hmc = hamiltorch.sample(
-        log_prob_func=log_h_prob, 
-        params_init=epsilon, 
-        num_samples=1, 
-        sampler=sampler,
-        step_size=kwargs['sample_step_size'],
-        num_steps_per_sample=kwargs['sample_steps']
-    )
-    
-    return epsilon_hmc
 
 def train_vaebm(vae, ebm, dataset, **kwargs):
     """
@@ -188,7 +146,7 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
                         or kwargs['sample_type'] == 'rmhmc':
                     epsilon = hamiltonian_sample(
                         vae=vae,ebm=ebm,
-                        sampler_type=kwargs['sample_type'],
+                        sample_type=kwargs['sample_type'],
                         batch_size=kwargs['batch_size'], 
                         sample_steps=kwargs['sample_steps'],
                         sample_step_size=kwargs['sample_step_size']
@@ -235,7 +193,7 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
         
         torch.save(
             ebm.state_dict(),
-            os.path.join(ROOT_DIR,kwargs['vae_type'],'_ebm_',str(dataset),"_",str(epoch),'.ckpt')
+            os.path.join(ROOT_DIR,kwargs['vae_type'],'_',kwargs['sample_type'],str(dataset),"_",str(epoch),'.ckpt')
         )
     
     return 0
