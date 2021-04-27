@@ -140,7 +140,7 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
                         sample_step_size=kwargs['sample_step_size']
                     )
 
-                elif kwargs['sample_type'] == 'hmc' \
+                '''elif kwargs['sample_type'] == 'hmc' \
                         or kwargs['sample_type'] == 'rmhmc':
                     epsilon = hamiltonian_sample(
                         vae=vae,ebm=ebm,
@@ -148,7 +148,7 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
                         batch_size=kwargs['batch_size'], 
                         sample_steps=kwargs['sample_steps'],
                         sample_step_size=kwargs['sample_step_size']
-                    )
+                       )'''
                 
                 else:
                     raise Exception('Please choose a valid option from lang, hmc, rmhmc')
