@@ -139,6 +139,8 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
                         sample_steps=kwargs['sample_steps'],
                         sample_step_size=kwargs['sample_step_size']
                     )
+                else:
+                    raise Exception('Please choose a valid option from lang')
 
                 '''elif kwargs['sample_type'] == 'hmc' \
                         or kwargs['sample_type'] == 'rmhmc':
@@ -150,8 +152,7 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
                         sample_step_size=kwargs['sample_step_size']
                        )'''
                 
-                else:
-                    raise Exception('Please choose a valid option from lang, hmc, rmhmc')
+                
 
                 with torch.no_grad():
                     neg_image = vae.decoder(epsilon)
