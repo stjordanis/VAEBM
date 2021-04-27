@@ -4,7 +4,6 @@ import sys
 import argparse
 
 import torch
-import hamiltorch
 import torchvision
 from torch.optim import Adam
 from torch.utils.data import DataLoader
@@ -18,7 +17,6 @@ from vae.disvae.training import Trainer
 from vae.disvae.utils.modelIO import load_model
 from Langevin_dynamics.langevin_sampling.SGLD import SGLD
 from igebm.model import IGEBM
-# from igebm.train import SampleBuffer
 
 from datasets import Chairs, CelebA
 
@@ -193,7 +191,7 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
         
         torch.save(
             ebm.state_dict(),
-            os.path.join(ROOT_DIR,kwargs['vae_type'],'_',kwargs['sample_type'],str(dataset),"_",str(epoch),'.ckpt')
+            ROOT_DIR+kwargs['vae_type']+'_'+str(dataset)+"_"+str(epoch)+'.ckpt'
         )
     
     return 0
@@ -202,7 +200,7 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
 if __name__=='__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--vae_type',type=str, default='VAE', help='Choose from VAE, factor')
+    parser.add_argument('--vae_type',type=str, default='VAE', help='Choose from VAE, factor, btcvae')
     
     parser.add_argument('--num_workers',type=int, default=2)
     parser.add_argument('--dataset',type=str, default='mnist', help='Dataset: mnist, chairs, celeba')
