@@ -23,13 +23,11 @@ from igebm.model import IGEBM
 from datasets import Chairs, CelebA
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+scaler = torch.cuda.amp.GradScaler()
 
 VAE_DIR = './vae/results/'
+ROOT_DIR = '/content/gdrive/MyDrive/results/'
 
-HMC_N_STEPS = 25
-HMC_STEP_SIZE = 0.3093
-
-scaler = torch.cuda.amp.GradScaler()
 
 def load_data(dataset, **kwargs):
     """
@@ -42,9 +40,7 @@ def load_data(dataset, **kwargs):
     
     dataset = dataset.upper().replace(" ","")
     transform = ToTensor()   #Define custom based on different datasets 
-    celeba_transform = Compose([Resize((64,64)),
-                                CenterCrop(178),
-                                ToTensor()])
+    
     if dataset in ['MNIST','CELEBA','CHAIRS']:
         
         if dataset == 'MNIST':
@@ -113,25 +109,39 @@ def hamiltonian_sample(vae, ebm, **kwargs):
     Parameters-->
         vae (torch.nn.module) : VAE model used in VAEBM
         ebm (torch.nn.module) : EBM model used in VAEBM
-        batch_size (int): batch size of data, default: 
-        
+        **kwargs:
+            batch_size (int): batch size of data, default: 32 
     """
 
     hamiltorch.set_random_seed(123)
-    epsilon = torch.randn(kwargs['batch_size'],vae.latent_dim,device=device)
+    
+    if kwargs['sampler_type'] == 'hmc':
+        sampler = hamiltorch.Sampler.HMC      #Standard HMC
+
+    elif kwargs['sampler_type'] == 'rmhmc':
+        sampler = hamiltorch.Sampler.RMHMC      #Riemannian HMC
+
+    else:
+        raise Exception('Invalid sample type')
+
+    epsilon = torch.randn(vae.latent_dim,device=device)
     
     epsilon.requires_grad = True
     vae.eval()
     ebm.eval()
 
-    h_prob_dist = lambda eps: torch.exp(-ebm(vae.decoder(eps))) * torch.exp(-0.5 * (torch.linalg.norm(eps,dim=1) ** 2))
+    log_h_prob = lambda eps: -ebm(vae.decoder(eps)) - 0.5 * (torch.linalg.norm(eps,dim=1) ** 2)
 
-    epsilon_hmc = hamiltorch.sample(log_prob_func=h_prob_dist.log_prob(epsilon), params_init=epsilon, num_samples=vae.latent_dim,
-                               step_size=kwargs['sample_step_size'], num_steps_per_sample=kwargs['sample_steps'])
+    epsilon_hmc = hamiltorch.sample(
+        log_prob_func=log_h_prob, 
+        params_init=epsilon, 
+        num_samples=kwargs['batch_size'], 
+        sampler=sampler,
+        step_size=kwargs['sample_step_size'],
+        num_steps_per_sample=kwargs['sample_steps']
+    )
     
     return epsilon_hmc
-
-    
 
 def train_vaebm(vae, ebm, dataset, **kwargs):
     """
@@ -155,9 +165,6 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
         batch_size=kwargs['batch_size'], 
         num_workers=kwargs['num_workers']
     )
-    
-    # if dataset == 'celeba':
-    #     buffer = SampleBuffer()
 
     optimizer = Adam(params=ebm.parameters(),lr=kwargs['train_step_size'])
     
@@ -169,7 +176,7 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
             with torch.cuda.amp.autocast():
                 pos_image = pos_image.to(device)
                 
-                if kwargs['sample_type'] == 'langevin':
+                if kwargs['sample_type'] == 'lang':
                     epsilon = langevin_sample(
                         vae=vae,ebm=ebm,
                         batch_size=kwargs['batch_size'], 
@@ -177,13 +184,18 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
                         sample_step_size=kwargs['sample_step_size']
                     )
 
-                else:
+                elif kwargs['sample_type'] == 'hmc' \
+                        or kwargs['sample_type'] == 'rmhmc':
                     epsilon = hamiltonian_sample(
                         vae=vae,ebm=ebm,
+                        sampler_type=kwargs['sample_type'],
                         batch_size=kwargs['batch_size'], 
                         sample_steps=kwargs['sample_steps'],
                         sample_step_size=kwargs['sample_step_size']
                     )
+                
+                else:
+                    raise Exception('Please choose a valid option from lang, hmc, rmhmc')
 
                 with torch.no_grad():
                     neg_image = vae.decoder(epsilon)
@@ -210,14 +222,21 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
             loss = loss.detach()
             
             torch.cuda.empty_cache()
+            
             if dataset == 'chairs':
                 if idx == 2697:
+                    iterator.close()
                     break
-            elif dataset == 'celeba':
+            
+            if dataset == 'celeba':
                 if idx == 6330:
                     iterator.close()
                     break
-        torch.save(ebm.state_dict(),'/content/gdrive/MyDrive/results/' + kwargs['vae_type'] + '_ebm_'+str(dataset)+"_"+str(epoch)+'.ckpt')
+        
+        torch.save(
+            ebm.state_dict(),
+            os.path.join(ROOT_DIR,kwargs['vae_type'],'_ebm_',str(dataset),"_",str(epoch),'.ckpt')
+        )
     
     return 0
 
@@ -225,25 +244,25 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
 if __name__=='__main__':
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--vae_type',type=str, default='VAE')
+    parser.add_argument('--vae_type',type=str, default='VAE', help='Choose from VAE, factor')
     
     parser.add_argument('--num_workers',type=int, default=2)
-    parser.add_argument('--dataset',type=str, default='mnist')
+    parser.add_argument('--dataset',type=str, default='mnist', help='Dataset: mnist, chairs, celeba')
     parser.add_argument('--batch_size',type=int, default=32)
 
     parser.add_argument('--l2_reg_weight', type=float, default=1.0)
     parser.add_argument('--spectral_norm_weight', type=float, default=0.2)
 
-    parser.add_argument('--sampling_type',type=str, default='langevin')
-    parser.add_argument('--sample_step_size', type=float, default=5e-6)
+    parser.add_argument('--sample_type',type=str, default='lang', help='Type of sampling: lang, hmc, rmhmc')
+    parser.add_argument('--sample_step_size', type=float, default=8e-5)
     parser.add_argument('--sample_steps', type=int, default=10)
 
-    parser.add_argument('--train_step_size', type=float, default=5e-5)
-    parser.add_argument('--train_steps', type=int, default=4)
+    parser.add_argument('--train_step_size', type=float, default=4e-5)
+    parser.add_argument('--train_steps', type=int, default=15)
     
     args = parser.parse_args()
 
-    vae_model_name = args.vae_type + '_' + args.dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
+    vae_model_name = args.vae_type + '_' + args.dataset      #Choose from VAE, factor-VAE 
     vae_model_dir = os.path.join(VAE_DIR,vae_model_name)
 
     vae = load_model(vae_model_dir).to(device)
@@ -256,7 +275,7 @@ if __name__=='__main__':
         vae=vae,ebm=ebm,
         dataset=args.dataset, batch_size=args.batch_size, num_workers=args.num_workers,
         alpha_e=args.l2_reg_weight, alpha_n=args.spectral_norm_weight, 
-        sample_type=args.sampling_type, vae_type=args.vae_type,
+        sample_type=args.sample_type, vae_type=args.vae_type,
         sample_steps=args.sample_steps, sample_step_size=args.sample_step_size, 
         train_steps=args.train_steps, train_step_size=args.train_step_size
     )
