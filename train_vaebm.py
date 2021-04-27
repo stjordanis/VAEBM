@@ -124,18 +124,18 @@ def hamiltonian_sample(vae, ebm, **kwargs):
     else:
         raise Exception('Invalid sample type')
 
-    epsilon = torch.randn(vae.latent_dim,device=device)
+    epsilon = torch.randn(kwargs['batch_size'],vae.latent_dim,device=device)
     
     epsilon.requires_grad = True
     vae.eval()
     ebm.eval()
 
-    log_h_prob = lambda eps: -ebm(vae.decoder(eps)) - 0.5 * (torch.linalg.norm(eps,dim=1) ** 2)
+    log_h_prob = lambda eps: (-ebm(vae.decoder(eps)) - 0.5 * (torch.linalg.norm(eps,dim=1) ** 2)).sum()
 
     epsilon_hmc = hamiltorch.sample(
         log_prob_func=log_h_prob, 
         params_init=epsilon, 
-        num_samples=kwargs['batch_size'], 
+        num_samples=1, 
         sampler=sampler,
         step_size=kwargs['sample_step_size'],
         num_steps_per_sample=kwargs['sample_steps']
