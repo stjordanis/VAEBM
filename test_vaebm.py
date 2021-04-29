@@ -71,7 +71,7 @@ def traverse_samples(samples, batch_size):
     for sample_step in samples:
         y_pos = 0
         for sample in sample_step:
-            im_sample = ToPILImage()(sample[0])
+            im_sample = ToPILImage()(sample)
             final_im.paste(im_sample, (x_pos,y_pos))
             y_pos += sample_step.shape[3]
         x_pos += sample_step.shape[2]
@@ -156,7 +156,7 @@ def main():
     vae = load_model(vae_model_dir).to(device)
     vae.eval()
 
-    ebm = IGEBM()
+    ebm = IGEBM(dataset=dataset)
     ebm.load_state_dict(torch.load(os.path.join('./results',ebm_model_file)))
     ebm = ebm.to(device)
     ebm.eval()
