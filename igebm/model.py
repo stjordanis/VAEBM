@@ -1,7 +1,7 @@
 import torch
 
 from torch import nn
-from torch.nn import Conv2d
+from torch.nn import Conv2d, Linear
 from torch.nn import functional as F
 from torch.nn.utils import weight_norm
 
@@ -82,12 +82,13 @@ class ResBlock(nn.Module):
 
 
 class IGEBM(nn.Module):
-    def __init__(self, n_class=None, dataset='mnist', in_channels=1):
+    def __init__(self, n_class=None, dataset='mnist', in_channels=1, latent_dim):
         super().__init__()
         self.dataset = dataset
         self.in_channels = in_channels
         self.sr_u = {}
         self.sr_v = {}
+        self.latent_dim = latent_dim
 
         if self.dataset == 'celeba':
             
@@ -104,7 +105,7 @@ class IGEBM(nn.Module):
                     ResBlock(256, 256, n_class),
                 ]
             )
-            self.linear = nn.Linear(256, 1)
+            self.conv_linear = nn.Linear(256, 128)
     
         else:
             
@@ -119,17 +120,24 @@ class IGEBM(nn.Module):
                     ResBlock(256, 256, n_class),
                 ]
             )
-            self.linear = nn.Linear(256, 1)
+            self.conv_linear = nn.Linear(256, 128)
 
+        self.latent_layer = nn.Sequential(
+            Linear(self.latent_dim, 128),
+            Linear(128, 128),
+            Linear(128, 128)
+        )
         
+        self.energy_layer = Linear(256,1)
+
         self.all_conv_layers = []
         for _, layer in self.named_modules():
             if isinstance(layer, Conv2d):
                 self.all_conv_layers.append(layer)
         
 
-    def forward(self, input, class_id=None):
-        out = self.conv1(input)
+    def forward(self, image_input, latent_input, class_id=None):
+        out = self.conv1(image_input)
         out = F.silu(out)
 
         for block in self.blocks:
@@ -137,9 +145,14 @@ class IGEBM(nn.Module):
 
         out = F.silu(out)
         out = out.view(out.shape[0], out.shape[1], -1).sum(2)
-        out = self.linear(out)
+        
+        conv_out = self.conv_linear(out)
+        latent_out = self.latent_layer(latent_input)
 
-        return out.squeeze(1)
+        concat_out = torch.cat((conv_out,latent_out), dim=1)
+        energy_out = self.energy_layer(concat_out)
+
+        return energy_out.squeeze(1)
     
     
     def spec_norm(self):
