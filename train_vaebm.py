@@ -160,7 +160,7 @@ def train_vaebm(vae, ebm, dataset, **kwargs):
                 pos_energy = ebm(pos_image)
                 neg_energy = ebm(neg_image)
                 energy_loss = pos_energy - neg_energy
-                energy_reg_loss =  pos_energy * 2 + neg_energy * 2
+                energy_reg_loss =  pos_energy ** 2 + neg_energy ** 2
                 spectral_norm_loss = ebm.spec_norm()
                 loss = (energy_loss + alpha_e * energy_reg_loss).mean() + alpha_n * spectral_norm_loss
 
