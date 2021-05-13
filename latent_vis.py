@@ -6,10 +6,9 @@ import torch
 import torchvision
 import numpy as np 
 from sklearn.manifold import TSNE
-from torchvision.datasets import MNIST
-from torch.utils.data import DataLoader
+import matplotlib.pyplot as plt
+
 from torch.nn.functional import mse_loss
-from tqdm.std import trange
 
 from vae.disvae.utils.modelIO import load_model
 from igebm.model import IGEBM
@@ -39,10 +38,10 @@ def langevin_sample_recur(vae, ebm, **kwargs):
     image_out = vae.decoder(epsilon)
     image_out.detach_()
     
-    initial_samples = kwargs['initial_samples']
-    final_samples = kwargs['final_samples']
+    vae_samples = kwargs['vae_samples']
+    vaebm_samples = kwargs['vaebm_samples']
      
-    initial_samples.append(image_out.to('cpu'))
+    vae_samples.append(image_out)
 
     vae.eval()
     ebm.eval()
@@ -50,7 +49,6 @@ def langevin_sample_recur(vae, ebm, **kwargs):
                                  0.5 * mse_loss(vae.decoder(epsilon),image_out)
     # log_h_prob = lambda eps: ebm(vae.decoder(eps)) + 0.5 * (torch.linalg.norm(eps,dim=1) ** 2)
     
-    initial_samples = []
     step_size = kwargs['step_size']
 
     for step in range(kwargs['sampling_steps']):
@@ -67,8 +65,8 @@ def langevin_sample_recur(vae, ebm, **kwargs):
         
         if step == kwargs['sampling_steps'] - 1:
             sample_img = vae.decoder(epsilon)
-            sample_img = sample_img.detach().to('cpu')
-            final_samples.append(sample_img)
+            sample_img = sample_img.detach()
+            vaebm_samples.append(sample_img)
             del sample_img
         
         loss = loss.detach()
@@ -77,8 +75,8 @@ def langevin_sample_recur(vae, ebm, **kwargs):
     return 0
 
 def main():
-    initial_samples = []
-    final_samples = []
+    vae_samples = []
+    vaebm_samples = []
 
     parser = argparse.ArgumentParser()
 
@@ -115,7 +113,18 @@ def main():
             batch_size=batch_size, 
             sampling_steps=steps, 
             step_size=step_size,
-            initial_samples=initial_samples,
-            final_samples=final_samples
+            vae_samples=vae_samples,
+            vaebm_samples=vaebm_samples
         )
+    
+    VAE_latents = vae(vae_samples)[2]
+    EBM_latents = vae(vaebm_samples)[2]
+
+    VAE_latents_embedded = TSNE(n_components=2).fit_transform(VAE_latents)
+    EBM_latents_embedded = TSNE(n_components=2).fit_transform(EBM_latents)
+
+    plt.scatter(*zip(*VAE_latents_embedded))
+    plt.scatter(*zip(*EBM_latents_embedded))
+    plt.savefig('latents.png')
+    plt.close()
     
