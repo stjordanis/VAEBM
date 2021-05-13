@@ -150,7 +150,7 @@ def main():
     step_size = args.step_size
     steps = args.steps 
 
-    # ebm_model_file = ROOT_DIR + vae_type + '_' + dataset + '.ckpt'
+    ebm_model_file = ROOT_DIR + vae_type + '_' + dataset + '.ckpt'
     
     vae_model_name = vae_type + '_' +dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
     vae_model_dir = os.path.join(VAE_DIR,vae_model_name)
