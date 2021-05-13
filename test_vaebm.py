@@ -78,7 +78,7 @@ def traverse_samples(samples, batch_size, **kwargs):
             y_pos += sample_step.shape[3]
         x_pos += sample_step.shape[2]
 
-    final_im.save(RESULT_DIR+'/traversal_'+kwargs['vae_type']+"_"+kwargs['dataset']+"_"+str(kwargs['step_size'])+'.png')
+    final_im.save(RESULT_DIR+'/traversal_'+kwargs['vae_type']+"_"+kwargs['ebm_type']+"_"+kwargs['dataset']+"_"+str(kwargs['step_size'])+'.png')
 
 def langevin_sample_image(vae, ebm_x, ebm_xz, **kwargs):
     """
@@ -96,7 +96,7 @@ def langevin_sample_image(vae, ebm_x, ebm_xz, **kwargs):
         image_out (torch.Tensor): image sample
     """
     epsilon_x = torch.randn(kwargs['batch_size'], vae.latent_dim, requires_grad=True, device=device)
-    epsilon_xz = torch.clone(epsilon_x)
+    epsilon_xz = torch.tensor(epsilon_x.data, requires_grad=True, device=device)
 
     image_out = vae.decoder(epsilon_x)
     image_out.detach_()
@@ -169,9 +169,9 @@ def main():
     steps = args.steps 
 
     ebmx_model_file = ROOT_DIR + vae_type + '_' + dataset + '.ckpt'
-    ebmxz_model_file = ROOT_DIR + vae_type + '_' + dataset + '.ckpt'
+    ebmxz_model_file = '/content/gdrive/MyDrive/results/results_xzVAE_celeba_3.ckpt'
     
-    vae_model_name = vae_type + '_' +dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
+    vae_model_name = vae_type + '_' + dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
     vae_model_dir = os.path.join(VAE_DIR,vae_model_name)
     vae = load_model(vae_model_dir).to(device)
     vae.eval()
