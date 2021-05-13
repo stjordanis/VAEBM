@@ -34,14 +34,11 @@ def langevin_sample_recur(vae, ebm, **kwargs):
     Returns-->
         image_out (torch.Tensor): image sample
     """
-    epsilon = torch.randn(kwargs['batch_size'], vae.latent_dim, requires_grad=True, device=device)
+    epsilon = torch.randn(1, vae.latent_dim, requires_grad=True, device=device)
     image_out = vae.decoder(epsilon)
     image_out.detach_()
-    
-    vae_samples = kwargs['vae_samples']
-    vaebm_samples = kwargs['vaebm_samples']
-     
-    vae_samples.append(image_out)
+
+    vae_sample = image_out
 
     vae.eval()
     ebm.eval()
@@ -64,25 +61,23 @@ def langevin_sample_recur(vae, ebm, **kwargs):
         epsilon.grad.zero_()
         
         if step == kwargs['sampling_steps'] - 1:
-            sample_img = vae.decoder(epsilon)
-            sample_img = sample_img.detach()
-            vaebm_samples.append(sample_img)
-            del sample_img
-        
+            vaebm_sample = vae.decoder(epsilon)
+            vaebm_sample = vaebm_sample.detach()
+                    
         loss = loss.detach()
         noise = noise.detach()
-
-    return 0
+        
+    return vae_sample, vaebm_sample
 
 def main():
-    vae_samples = []
-    vaebm_samples = []
+    VAE_latents = []
+    EBM_latents = []
 
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--vae_type',type=str, default='VAE')
     parser.add_argument('--dataset',type=str, default='mnist')
-    parser.add_argument('--batch_size',type=int, default=1024)
+    parser.add_argument('--batch_size',type=int, default=4)
     parser.add_argument('--step_size', type=float, default=8e-3)
     parser.add_argument('--steps', type=int, default=16)
     
@@ -107,24 +102,26 @@ def main():
     ebm.eval()
 
     for _ in range(batch_size):
-        langevin_sample_recur(
+        vae_sample, vaebm_sample = langevin_sample_recur(
             vae,
             ebm, 
             batch_size=batch_size, 
             sampling_steps=steps, 
-            step_size=step_size,
-            vae_samples=vae_samples,
-            vaebm_samples=vaebm_samples
+            step_size=step_size
         )
+        VAE_latents.append(vae(vae_sample)[1][0].detach().to('cpu')[:,:10].numpy())
+        EBM_latents.append(vae(vaebm_sample)[1][0].detach().to('cpu')[:,:10].numpy())
     
-    VAE_latents = vae(vae_samples)[2]
-    EBM_latents = vae(vaebm_samples)[2]
+    VAE_latents = np.array(VAE_latents).reshape(-1,10)
+    EBM_latents = np.array(EBM_latents).reshape(-1,10)
 
-    VAE_latents_embedded = TSNE(n_components=2).fit_transform(VAE_latents)
-    EBM_latents_embedded = TSNE(n_components=2).fit_transform(EBM_latents)
+    VAE_latents_embedded = TSNE().fit_transform(VAE_latents)
+    EBM_latents_embedded = TSNE().fit_transform(EBM_latents)
 
     plt.scatter(*zip(*VAE_latents_embedded))
     plt.scatter(*zip(*EBM_latents_embedded))
-    plt.savefig('latents.png')
-    plt.close()
-    
+    # plt.show()
+    plt.savefig('/content/latents.png')
+
+if __name__=='__main__':
+    main()
