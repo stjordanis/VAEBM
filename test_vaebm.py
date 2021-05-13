@@ -17,6 +17,7 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 VAE_DIR = './vae/results/'
 RESULT_DIR = '/content/gdrive/MyDrive/cs698x_samples'
+ROOT_DIR = '/content/gdrive/MyDrive/results/'
 
 DATASETS = {
             'mnist': MNIST,
@@ -149,7 +150,7 @@ def main():
     step_size = args.step_size
     steps = args.steps 
 
-    ebm_model_file = '/content/gdrive/MyDrive/results/VAE_celeba_3.ckpt'
+    ebm_model_file = ROOT_DIR + vae_type + '_' + dataset + '.ckpt'
     
     vae_model_name = vae_type + '_' +dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
     vae_model_dir = os.path.join(VAE_DIR,vae_model_name)
