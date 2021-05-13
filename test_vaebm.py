@@ -16,6 +16,7 @@ from vae.disvae.utils.modelIO import load_model
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 VAE_DIR = './vae/results/'
+RESULT_DIR = '/content/gdrive/MyDrive/cs698x_samples'
 
 DATASETS = {
             'mnist': MNIST,
@@ -35,7 +36,7 @@ IMAGE_SHAPES = {
             'celeba': (3,64,64)
 }
 
-def generate_samples(samples, batch_size):
+def generate_samples(samples, batch_size, **kwargs):
     final_samples = samples[-1]
 
     side_n = int(np.sqrt(batch_size))
@@ -48,9 +49,9 @@ def generate_samples(samples, batch_size):
         for j in range(side_n):
             final_im.paste(ToPILImage()(final_samples[side_n*i + j]), (i*w, j*l))
 
-    final_im.save("random_samples.png")
+    final_im.save(RESULT_DIR+'/samples_'+kwargs['vae_type']+"_"+kwargs['dataset']+"_"+str(kwargs['step_size'])+'.png')
 
-def traverse_samples(samples, batch_size):
+def traverse_samples(samples, batch_size, **kwargs):
     '''
     Creates and saves final traversal image for samples generated.
 
@@ -76,9 +77,9 @@ def traverse_samples(samples, batch_size):
             y_pos += sample_step.shape[3]
         x_pos += sample_step.shape[2]
 
-    final_im.save('sample_traversal.png')
+    final_im.save(RESULT_DIR+'/traversal_'+kwargs['vae_type']+"_"+kwargs['dataset']+"_"+str(kwargs['step_size'])+'.png')
 
-def langevin_sample_image(vae, ebm, batch_size, sampling_steps, step_size):
+def langevin_sample_image(vae, ebm, **kwargs):
     """
     Sample output image using Langevin dynamics based MCMC, 
     from VAEBM.
@@ -93,9 +94,8 @@ def langevin_sample_image(vae, ebm, batch_size, sampling_steps, step_size):
     Returns-->
         image_out (torch.Tensor): image sample
     """
-    epsilon = torch.randn(batch_size, vae.latent_dim, requires_grad=True, device=device)
+    epsilon = torch.randn(kwargs['batch_size'], vae.latent_dim, requires_grad=True, device=device)
     image_out = vae.decoder(epsilon)
-    print(torch.linalg.norm(vae.decoder(epsilon)-image_out,dim=1).shape)
     image_out.detach_()
 
     vae.eval()
@@ -105,8 +105,9 @@ def langevin_sample_image(vae, ebm, batch_size, sampling_steps, step_size):
     # log_h_prob = lambda eps: ebm(vae.decoder(eps)) + 0.5 * (torch.linalg.norm(eps,dim=1) ** 2)
     
     samples = []
+    step_size = kwargs['step_size']
 
-    for step in range(sampling_steps):
+    for step in range(kwargs['sampling_steps']):
         noise = torch.randn_like(epsilon,device=device)
         loss = log_h_prob(epsilon)
         loss.sum().backward()
@@ -126,9 +127,8 @@ def langevin_sample_image(vae, ebm, batch_size, sampling_steps, step_size):
         loss = loss.detach()
         noise = noise.detach()
 
-    traverse_samples(samples, batch_size=batch_size)
-    # generate_samples(samples, batch_size=batch_size)  #Prefer perfect square batch_size for this
-
+    return samples
+    
     return 0
 
 def main():
@@ -149,7 +149,7 @@ def main():
     step_size = args.step_size
     steps = args.steps 
 
-    ebm_model_file = '/content/results/ebm_model_chairs_8.ckpt'
+    ebm_model_file = '/content/gdrive/MyDrive/results/VAE_celeba_3.ckpt'
     
     vae_model_name = vae_type + '_' +dataset      #Choose from VAE, beta-VAE, beta-TCVAE, factor-VAE 
     vae_model_dir = os.path.join(VAE_DIR,vae_model_name)
@@ -161,7 +161,23 @@ def main():
     ebm = ebm.to(device)
     ebm.eval()
 
-    langevin_sample_image(vae, ebm, batch_size=batch_size, sampling_steps=steps, step_size=step_size)
+    samples = langevin_sample_image(vae, ebm, batch_size=batch_size, sampling_steps=steps, step_size=step_size)
+    
+    traverse_samples(
+        samples, 
+        batch_size=batch_size, 
+        dataset=dataset,
+        vae_type=vae_type,
+        step_size=step_size
+    )
+
+    generate_samples(
+        samples, 
+        batch_size=batch_size, 
+        dataset=dataset,
+        vae_type=vae_type,
+        step_size=step_size
+    )
 
 if __name__ == '__main__':
     main()
