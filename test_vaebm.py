@@ -64,7 +64,6 @@ def traverse_samples(samples, batch_size, **kwargs):
     '''
     W = len(samples) * samples[0].shape[2]
     L = batch_size * samples[0].shape[3]
-    # print(W,L)
 
     final_im = Image.new('RGB', (W,L))
     
@@ -129,8 +128,6 @@ def langevin_sample_image(vae, ebm, **kwargs):
         noise = noise.detach()
 
     return samples
-    
-    return 0
 
 def main():
 
