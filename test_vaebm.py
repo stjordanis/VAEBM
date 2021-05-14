@@ -10,8 +10,7 @@ import matplotlib.pyplot as plt
 import torchvision
 from torchvision.datasets import MNIST, CelebA
 from torchvision.transforms import ToPILImage
-from igebm.model_x import IGEBMx
-from igebm.model_xz import IGEBMxz
+from igebm.model import IGEBMx, IGEBMxz
 from vae.disvae.utils.modelIO import load_model
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
