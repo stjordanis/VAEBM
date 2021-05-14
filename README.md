@@ -42,7 +42,8 @@ Samples are stored according to the VAE used, dataset used and the step size inv
 ## References
 Code for IGEBM from https://github.com/rosinality/igebm-pytorch
 
+Spectral Norm code from https://github.com/NVlabs/NVAE
+
 FID Calculations using pytorch-fid library
 
 Pretrained VAE from https://github.com/YannDubs/disentangling-vae
-
