@@ -124,11 +124,19 @@ class IGEBMxz(nn.Module):
 
         self.latent_layer = nn.Sequential(
             Linear(self.latent_dim, 128),
+            nn.ReLU(inplace=True),
             Linear(128, 128),
+            nn.ReLU(inplace=True),
             Linear(128, 128)
         )
         
-        self.energy_layer = Linear(256,1)
+        self.energy_layer = nn.Sequential(
+            Linear(256,128),
+            nn.ReLU(inplace=True),
+            Linear(128,64),
+            nn.ReLU(inplace=True),
+            Linear(64,1)
+        )
 
         self.all_conv_layers = []
         for _, layer in self.named_modules():
