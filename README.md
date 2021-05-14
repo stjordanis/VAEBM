@@ -1,8 +1,7 @@
 # CS698X_Project
 
 ## Introduction
-Repository for CS698X course project (Topics in Probabilistic Modeling and Inference, Winter 2021, IIT Kanpur), on energy-based VAEs. Contains implementation of VAEBM for Vanilla VAE, $\beta$-TCVAE and Factor-VAE for MNIST, CelebA-64 and Chairs dataset. Based on the ICLR 2021 paper *VAEBM: A Symbiosis between Variational Autoencoders and Energy-based Models (Xiao et al. 2021).*
-
+Repository for CS698X course project (Topics in Probabilistic Modeling and Inference, Winter 2021, IIT Kanpur), on energy-based VAEs. Contains implementation of VAEBM for Vanilla VAE, $\beta$-TCVAE and Factor-VAE for MNIST, CelebA-64 and Chairs dataset. Based on the ICLR 2021 paper ***[VAEBM: A Symbiosis between Variational Autoencoders and Energy-based Models (Xiao et al. 2021)](https://arxiv.org/abs/2010.00654)***
 
 ## Running the models
 The Energy based model can be trained for a given VAE and dataset.
@@ -38,8 +37,9 @@ Args:
   --step_size, type=float, default=8e-3
   --steps, type=int, default=16
   ```
+Samples are stored according to the VAE used, dataset used and the step size involved. Pre-Trained models can be found here: [Google Drive](https://drive.google.com/drive/folders/1RW8uu5ZDbvm8dOZ0nWSHhhz76AY5F0Tf?usp=sharing). Please change the ROOT_DIR in `test_vaebm.py` to wherever the models are stored before running.
 
-
+## References
 Code for IGEBM from https://github.com/rosinality/igebm-pytorch
 
 FID Calculations using pytorch-fid library
