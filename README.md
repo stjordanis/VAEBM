@@ -40,10 +40,10 @@ Args:
 Samples are stored according to the VAE used, dataset used and the step size involved. Pre-Trained models can be found here: [Google Drive](https://drive.google.com/drive/folders/1RW8uu5ZDbvm8dOZ0nWSHhhz76AY5F0Tf?usp=sharing). Please change the ROOT_DIR in `test_vaebm.py` to wherever the models are stored before running.
 
 ## References
-Code for IGEBM from https://github.com/rosinality/igebm-pytorch
+Code for IGEBM from [igebm-pytorch](https://github.com/rosinality/igebm-pytorch)
 
-Spectral Norm code from [NVAE](https://github.com/NVlabs/NVAE)
+Spectral Norm code from [NVAE Repository](https://github.com/NVlabs/NVAE)
 
 FID Calculations using [pytorch-fid](https://github.com/mseitzer/pytorch-fid) library
 
-Pretrained VAE from https://github.com/YannDubs/disentangling-vae
+Pretrained VAE from [disentangling-vae](https://github.com/YannDubs/disentangling-vae)
