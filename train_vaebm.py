@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 from vae.disvae.training import Trainer
 from vae.disvae.utils.modelIO import load_model
 from Langevin_dynamics.langevin_sampling.SGLD import SGLD
-from igebm.model import IGEBM
+from igebm.model_xz import IGEBMxz
 
 from datasets import Chairs, CelebA
 
@@ -223,7 +223,7 @@ if __name__=='__main__':
     vae = load_model(vae_model_dir).to(device)
     vae.eval()
 
-    ebm = IGEBM(dataset=args.dataset).to(device)
+    ebm = IGEBMxz(dataset=args.dataset).to(device)
     ebm.train()
 
     train_vaebm(
