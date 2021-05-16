@@ -87,7 +87,7 @@ if __name__=="__main__":
 
     parser.add_argument('--vae_type',type=str, default='VAE')
     parser.add_argument('--dataset',type=str, default='mnist')
-    parser.add_argument('--batch-size', type=int, default=50)
+    parser.add_argument('--batch_size', type=int, default=50)
     parser.add_argument('--step_size', type=float, default=8e-3)
     parser.add_argument('--steps', type=int, default=16)
     parser.add_argument('--device', type=str, default=None)
