@@ -14,7 +14,7 @@ from vae.disvae.utils.modelIO import load_model
 VAE_DIR = './vae/results/'
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-def run_for_model(vae, ebm, sets, batch_size, sampling_steps, step_size):
+def run_for_model(vae, ebm, sets, batch_size, sampling_steps, step_size,paths):
     for i in range(sets):
         epsilon = torch.randn(batch_size, vae.latent_dim, requires_grad=True, device=device)
         image_out = vae.decoder(epsilon)
@@ -53,17 +53,17 @@ def run_for_model(vae, ebm, sets, batch_size, sampling_steps, step_size):
         j=0
         for sample in samples[-1]:
             temp = ToPILImage()(sample)
-            temp.save("./generated_samples/"+str(i)+"/"+str(j)+".png")
+            temp.save(os.path.join(paths[0],str(i)+"/"+str(j)+".png"))
             j=j+1
         j=0
         for sample in samples[0]:
             temp = ToPILImage()(sample)
-            temp.save("./vae_samples/"+str(i)+"/"+str(j)+".png")
+            temp.save(os.path.join(paths[1],str(i)+"/"+str(j)+".png"))
             j=j+1
 
 
 
-def run_for_data(batch_size,sets,dataset):
+def run_for_data(batch_size,sets,dataset,path):
     data = load_data(
         dataset, 
         batch_size=batch_size, 
@@ -74,7 +74,7 @@ def run_for_data(batch_size,sets,dataset):
       j=0
       for img in image:
         temp = ToPILImage()(img)
-        temp.save("./data_samples/"+str(i)+"/"+str(j)+".png")
+        temp.save(os.path.join(path,str(i)+"/"+str(j)+".png"))
         j=j+1
       i = i + 1
       if(i==sets):
@@ -158,7 +158,22 @@ if __name__=="__main__":
     ebm.eval()
 
 
-    run_for_model(vae, ebm, sets, batch_size=batch_size, sampling_steps=steps, step_size=step_size)
+    run_for_model(vae, ebm, sets, batch_size=batch_size, sampling_steps=steps, step_size=step_size,paths=[path[1],path[2]])
 
-    run_for_data(batch_size,sets,dataset)
-    # fid_value = calculate_fid_given_paths(args.path, args.batch_size,device,args.dims)
+    run_for_data(batch_size,sets,dataset,path=path[0])
+
+    fid_value = 0
+    for i in range(sets):
+        path0 = os.path.join(path[0],str(i))
+        path1 = os.path.join(path[1],str(i))
+        fid_value += fid_score.calculate_fid_given_paths([path0,path1], batch_size,device,args.dims)
+    fid_value /= sets
+    print("FID Score between EBM and Data: ", fid_value)
+
+    fid_value = 0
+    for i in range(sets):
+        path0 = os.path.join(path[0],str(i))
+        path2 = os.path.join(path[2],str(i))
+        fid_value += fid_score.calculate_fid_given_paths([path0,path2], batch_size,device,args.dims)
+    fid_value /= sets
+    print("FID Score between VAE and Data: ", fid_value)
