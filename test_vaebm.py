@@ -97,14 +97,18 @@ def langevin_sample_image(vae, ebm_x, ebm_xz, **kwargs):
     epsilon_x = torch.randn(kwargs['batch_size'], vae.latent_dim, requires_grad=True, device=device)
     epsilon_xz = torch.tensor(epsilon_x.data, requires_grad=True, device=device)
 
-    image_out = vae.decoder(epsilon_x)
-    image_out.detach_()
+    image_out_x = vae.decoder(epsilon_x)
+    image_out_x.detach_()
+
+    image_out_xz = vae.decoder(epsilon_xz)
+    image_out_xz.detach_()
 
     vae.eval()
     ebm_x.eval()
     ebm_xz.eval()
+
     log_h_x = lambda epsilon: ebm_x(vae.decoder(epsilon)) + \
-                                 0.5 * mse_loss(vae.decoder(epsilon),image_out)
+                                 0.5 * mse_loss(vae.decoder(epsilon),image_out_x)
     log_h_xz = lambda epsilon: ebm_xz(vae.decoder(epsilon),epsilon) + \
                                  0.5 * mse_loss(vae.decoder(epsilon),image_out)
     
@@ -115,9 +119,7 @@ def langevin_sample_image(vae, ebm_x, ebm_xz, **kwargs):
     for step in range(kwargs['sampling_steps']):
         noise = torch.randn_like(epsilon_x,device=device)
         loss_x = log_h_x(epsilon_x)
-        loss_xz = log_h_xz(epsilon_xz)
-        loss_x.sum().backward()
-        loss_xz.sum().backward()
+        loss_x.sum().backward(retain_graph=True)
 
         epsilon_x.data.add_(noise, alpha=torch.sqrt(torch.tensor(step_size)))
         epsilon_x.grad.data.clamp_(-0.01,0.01)
@@ -126,6 +128,19 @@ def langevin_sample_image(vae, ebm_x, ebm_xz, **kwargs):
         epsilon_x.grad.detach_()
         epsilon_x.grad.zero_()
 
+        sample_x = vae.decoder(epsilon_x)
+        sample_x = sample_x.detach().to('cpu')
+        samples_x.append(sample_x)
+        del sample_x
+        
+        loss_x = loss_x.detach()
+        noise = noise.detach()
+
+    for step in range(kwargs['sampling_steps']):
+        noise = torch.randn_like(epsilon_xz,device=device)
+        loss_xz = log_h_xz(epsilon_xz)
+        loss_xz.sum().backward()
+
         epsilon_xz.data.add_(noise, alpha=torch.sqrt(torch.tensor(step_size)))
         epsilon_xz.grad.data.clamp_(-0.01,0.01)
 
@@ -133,17 +148,11 @@ def langevin_sample_image(vae, ebm_x, ebm_xz, **kwargs):
         epsilon_xz.grad.detach_()
         epsilon_xz.grad.zero_()
         
-        sample_x = vae.decoder(epsilon_x)
-        sample_x = sample_x.detach().to('cpu')
-        samples_x.append(sample_x)
-        del sample_x
-        
         sample_xz = vae.decoder(epsilon_xz)
         sample_xz = sample_xz.detach().to('cpu')
         samples_xz.append(sample_xz)
         del sample_xz
         
-        loss_x = loss_x.detach()
         loss_xz = loss_xz.detach()
         noise = noise.detach()
 
