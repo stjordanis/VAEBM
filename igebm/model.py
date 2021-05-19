@@ -1,7 +1,7 @@
 import torch
 
 from torch import nn
-from torch.nn import Conv2d
+from torch.nn import Conv2d , Linear , ReLU
 from torch.nn import functional as F
 from torch.nn.utils import weight_norm
 
