@@ -110,13 +110,18 @@ def langevin_sample_image(vae, ebm_x, ebm_xz, **kwargs):
     log_h_x = lambda epsilon: ebm_x(vae.decoder(epsilon)) + \
                                  0.5 * mse_loss(vae.decoder(epsilon),image_out_x)
     log_h_xz = lambda epsilon: ebm_xz(vae.decoder(epsilon),epsilon) + \
-                                 0.5 * mse_loss(vae.decoder(epsilon),image_out)
+                                 0.5 * mse_loss(vae.decoder(epsilon),image_out_xz)
     
     samples_x = []
     samples_xz = []
     step_size = kwargs['step_size']
 
     for step in range(kwargs['sampling_steps']):
+        sample_x = vae.decoder(epsilon_x)
+        sample_x = sample_x.detach().to('cpu')
+        samples_x.append(sample_x)
+        del sample_x
+
         noise = torch.randn_like(epsilon_x,device=device)
         loss_x = log_h_x(epsilon_x)
         loss_x.sum().backward(retain_graph=True)
@@ -127,16 +132,16 @@ def langevin_sample_image(vae, ebm_x, ebm_xz, **kwargs):
         epsilon_x.data.add(epsilon_x.grad.data, alpha=-step_size / 2)
         epsilon_x.grad.detach_()
         epsilon_x.grad.zero_()
-
-        sample_x = vae.decoder(epsilon_x)
-        sample_x = sample_x.detach().to('cpu')
-        samples_x.append(sample_x)
-        del sample_x
         
         loss_x = loss_x.detach()
         noise = noise.detach()
 
     for step in range(kwargs['sampling_steps']):
+        sample_xz = vae.decoder(epsilon_xz)
+        sample_xz = sample_xz.detach().to('cpu')
+        samples_xz.append(sample_xz)
+        del sample_xz
+
         noise = torch.randn_like(epsilon_xz,device=device)
         loss_xz = log_h_xz(epsilon_xz)
         loss_xz.sum().backward()
@@ -147,11 +152,6 @@ def langevin_sample_image(vae, ebm_x, ebm_xz, **kwargs):
         epsilon_xz.data.add(epsilon_xz.grad.data, alpha=-step_size / 2)
         epsilon_xz.grad.detach_()
         epsilon_xz.grad.zero_()
-        
-        sample_xz = vae.decoder(epsilon_xz)
-        sample_xz = sample_xz.detach().to('cpu')
-        samples_xz.append(sample_xz)
-        del sample_xz
         
         loss_xz = loss_xz.detach()
         noise = noise.detach()
