@@ -1,4 +1,4 @@
-# CS698X_Project
+# VAEBMs
 
 ## Introduction
 Repository for CS698X course project (Topics in Probabilistic Modeling and Inference, Winter 2021, IIT Kanpur), on energy-based VAEs. Contains implementation of VAEBM for Vanilla VAE, beta-TCVAE and Factor-VAE for MNIST, CelebA-64 and Chairs dataset. Based on the ICLR 2021 paper ***[VAEBM: A Symbiosis between Variational Autoencoders and Energy-based Models (Xiao et al. 2021)](https://arxiv.org/abs/2010.00654)***
